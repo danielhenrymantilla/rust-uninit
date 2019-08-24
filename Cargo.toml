@@ -1,6 +1,6 @@
 [package]
 name = "uninit"
-version = "0.0.1-alpha-2"
+version = "0.0.1"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
@@ -15,7 +15,7 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-require_unsafe_in_body = "0.2.0-alpha"
+require_unsafe_in_body = "0.2.0"
 
 [features]
 chain = []

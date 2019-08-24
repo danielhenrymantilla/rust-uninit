@@ -2,6 +2,9 @@
 
 > A collection of tools for a safer usage of uninitialized memory.
 
+[![Latest version](https://img.shields.io/crates/v/uninit.svg)](https://crates.io/crates/uninit)
+[![Documentation](https://docs.rs/uninit/badge.svg)](https://docs.rs/uninit)
+![License](https://img.shields.io/crates/l/uninit.svg)
 ___
 
 Many crates out there try to replicate C "optimization" patterns such as

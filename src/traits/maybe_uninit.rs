@@ -13,36 +13,24 @@ trait MaybeUninitExt {
     ///
     ///  - The `Self::T` that `self` points to must be initialized.
     unsafe
-    fn assume_init_by_ref<'__> (self: &'__ Self)
-        -> &'__ Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_ref (self: &'_ Self)
+        -> &'_ Self::T
     ;
 
     /// # Safety
     ///
     ///  - The `Self::T` that `self` points to must be initialized.
     unsafe
-    fn assume_init_by_mut<'__> (self: &'__ mut Self)
-        -> &'__ mut Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_mut (self: &'_ mut Self)
+        -> &'_ mut Self::T
     ;
 
-    fn from_ref<'__> (init_ref: &'__ Self::T)
-        -> &'__ Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_ref (init_ref: &'_ Self::T)
+        -> &'_ Self
     ;
 
-    fn from_mut<'__> (init_mut: &'__ mut Self::T)
-        -> &'__ mut Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_mut (init_mut: &'_ mut Self::T)
+        -> &'_ mut Self
     ;
 }
 
@@ -51,11 +39,8 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     type T = T;
 
     unsafe
-    fn assume_init_by_ref<'__> (self: &'__ Self)
-        -> &'__ Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_ref (self: &'_ Self)
+        -> &'_ Self::T
     {
         unsafe {
             // # Safety
@@ -66,11 +51,8 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     }
 
     unsafe
-    fn assume_init_by_mut<'__> (self: &'__ mut Self)
-        -> &'__ mut Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_mut (self: &'_ mut Self)
+        -> &'_ mut Self::T
     {
         unsafe {
             // # Safety
@@ -80,11 +62,8 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
         }
     }
 
-    fn from_ref<'__> (some_ref: &'__ Self::T)
-        -> &'__ Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_ref (some_ref: &'_ Self::T)
+        -> &'_ Self
     {
         unsafe {
             // # Safety
@@ -94,11 +73,8 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
         }
     }
 
-    fn from_mut<'__> (some_mut_ref: &'__ mut Self::T)
-        -> &'__ mut Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_mut (some_mut_ref: &'_ mut Self::T)
+        -> &'_ mut Self
     {
         unsafe {
             // # Safety
@@ -114,11 +90,8 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
     type T = [T];
 
     unsafe
-    fn assume_init_by_ref<'__> (self: &'__ Self)
-        -> &'__ Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_ref (self: &'_ Self)
+        -> &'_ Self::T
     {
         unsafe {
             // # Safety
@@ -129,11 +102,8 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
     }
 
     unsafe
-    fn assume_init_by_mut<'__> (self: &'__ mut Self)
-        -> &'__ mut Self::T
-    where
-        Self : '__,
-        Self::T : '__,
+    fn assume_init_by_mut (self: &'_ mut Self)
+        -> &'_ mut Self::T
     {
         unsafe {
             // # Safety
@@ -143,11 +113,8 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
         }
     }
 
-    fn from_ref<'__> (slice: &'__ Self::T)
-        -> &'__ Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_ref (slice: &'_ Self::T)
+        -> &'_ Self
     {
         unsafe {
             // # Safety
@@ -157,11 +124,8 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
         }
     }
 
-    fn from_mut<'__> (slice: &'__ mut Self::T)
-        -> &'__ mut Self
-    where
-        Self : '__,
-        Self::T : '__,
+    fn from_mut (slice: &'_ mut Self::T)
+        -> &'_ mut Self
     {
         unsafe {
             // # Safety
