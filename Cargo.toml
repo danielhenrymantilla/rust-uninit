@@ -1,6 +1,6 @@
 [package]
 name = "uninit"
-version = "0.0.1-alpha"
+version = "0.0.1-alpha-2"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
@@ -9,7 +9,7 @@ homepage = "https://crates.io/crates/uninit"
 
 description = "A collection of tools for a safer usage of uninitialized memory"
 keywords = ["uninit", "sound", "unsafe", "read", "MaybeUninit"]
-categories = ["no-std", "mmeory-management", "rust-patterns"]
+categories = ["memory-management", "rust-patterns"]
 
 readme = "README.md"
 license = "MIT"
