@@ -1,0 +1,29 @@
+[package]
+name = "uninit"
+version = "0.0.1-alpha"
+authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
+edition = "2018"
+
+documentation = "https://docs.rs/uninit"
+homepage = "https://crates.io/crates/uninit"
+
+description = "A collection of tools for a safer usage of uninitialized memory"
+keywords = ["uninit", "sound", "unsafe", "read", "MaybeUninit"]
+categories = ["no-std", "mmeory-management", "rust-patterns"]
+
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+require_unsafe_in_body = "0.2.0-alpha"
+
+[features]
+chain = []
+downcast_as_ReadIntoUninit = []
+nightly = []
+polonius-check = ["nightly"]
+
+default = []
+
+[package.metadata.docs.rs]
+features = [ "nightly" ]
