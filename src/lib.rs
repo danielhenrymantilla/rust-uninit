@@ -17,14 +17,15 @@ mod impls;
 
 pub use self::traits::{
     MaybeUninitExt,
+    slice::{
+        InitWithCopyFromSlice,
+    },
+    vec::{
+        VecExtendFromReader,
+        VecReserveUninit,
+    },
 };
 mod traits;
-
-pub use self::vec::{
-    VecExtendFromReader,
-    VecReserveUninit,
-};
-mod vec;
 
 #[doc(hidden)]
 pub use ::core;

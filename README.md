@@ -159,7 +159,9 @@ by the way more ergonomically, a `&mut [MaybeUninit<u8>]`).
 
 So, the objective of this crate is double:
 
-  - it offers ergonomic ways to create uninitialized buffers. For instance:
+  - it offers ergonomic ways to create uninitialized buffers.
+
+    For instance:
 
       - [`uninit_byte_array!`]
 
@@ -167,20 +169,24 @@ So, the objective of this crate is double:
 
   - it tries to offer APIs that are equivalent to pervasive APIs,
     such as `Read`'s, but that are able to work with such uninitialized buffers.
+
     For instance:
 
       - [`ReadIntoUninit`]
 
+      - [`.init_with_copy_from_slice()`]
+
 ## Status
 
-This is currently in alpha / experimental stage, and "only" includes
+This is currently at an realy stage, so it "only" includes
 utilities to work with **uninitialized bytes** or integers.
 
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
 [`MaybeUninit`]: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html
-[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.0.1-alpha-2/uninit/trait.MaybeUninitExt.html#method.assume_init_by_ref
-[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.0.1-alpha-2/uninit/trait.MaybeUninitExt.html#method.assume_init_by_mut
-[`uninit_byte_array!`]: https://docs.rs/uninit/0.0.1-alpha-2/uninit/macro.uninit_byte_array.html
-[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.0.1-alpha-2/uninit/trait.VecReserveUninit.html#tymethod.reserve_uninit
-[`ReadIntoUninit`]: https://docs.rs/uninit/0.0.1-alpha-2/uninit/trait.ReadIntoUninit.html
+[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.1.0/uninit/trait.MaybeUninitExt.html#method.assume_init_by_ref
+[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.1.0/uninit/trait.MaybeUninitExt.html#method.assume_init_by_mut
+[`uninit_byte_array!`]: https://docs.rs/uninit/0.1.0/uninit/macro.uninit_byte_array.html
+[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.1.0/uninit/trait.VecReserveUninit.html#tymethod.reserve_uninit
+[`.init_with_copy_from_slice()`]: https://docs.rs/uninit/0.1.0/uninit/trait.InitWithCopyFromSlice.html#tymethod.init_with_copy_from_slice
+[`ReadIntoUninit`]: https://docs.rs/uninit/0.1.0/uninit/trait.ReadIntoUninit.html

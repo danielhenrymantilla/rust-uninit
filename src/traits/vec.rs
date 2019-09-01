@@ -1,4 +1,5 @@
-use super::*;
+use crate::*;
+use ::core::slice;
 
 /// Extension trait for [`Vec`], that reserves extra uninitialized memory for
 /// it, and **returns a mutable handle on those extra (uninitialized) bytes**.
@@ -7,7 +8,7 @@ use super::*;
 ///
 /// ```rust
 /// # use ::core::mem::MaybeUninit;
-/// use ::uninit::VecReserveUninit;
+/// use ::uninit::{InitWithCopyFromSlice, VecReserveUninit};
 ///
 /// let mut vec = b"Hello, ".to_vec();
 /// const WORLD: &[u8] = b"World!";
@@ -15,14 +16,16 @@ use super::*;
 ///
 /// let extra: &mut [MaybeUninit<u8>] = vec.reserve_uninit(WORLD.len());
 /// assert_eq!(extra.as_mut_ptr() as *mut u8, uninit_start);
+/// assert_eq!(extra.len(), WORLD.len());
+///
+/// extra.init_with_copy_from_slice(WORLD);
 /// unsafe {
-///     assert_eq!(extra.len(), WORLD.len());
-///     ::core::ptr::copy_nonoverlapping(
-///         WORLD.as_ptr(),
-///         extra.as_mut_ptr() as *mut u8,
-///         extra.len(),
-///     );
-///     vec.set_len(vec.len() + 6);
+///     // # Safety
+///     //
+///     //   - `.init_with_copy_from_slice()` contract guarantees initialization
+///     //     of `extra`, which, in turn, from `reserve_uninit`'s contract,
+///     //     leads to the `vec` extra capacity having been initialized.
+///     vec.set_len(vec.len() + WORLD.len());
 /// }
 /// assert_eq!(
 ///     vec,
