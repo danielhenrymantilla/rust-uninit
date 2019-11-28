@@ -14,6 +14,12 @@ pub_in_crate! {
         },
     };
     use crate::{
-        traits::*,
+        prelude::*,
+        extension_traits::{
+            VecExtendFromReader,
+        },
+        read::{
+            ReadIntoUninit,
+        },
     };
 }

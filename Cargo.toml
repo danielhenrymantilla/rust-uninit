@@ -18,10 +18,9 @@ license = "MIT"
 require_unsafe_in_body = "0.2.0"
 
 [features]
-chain = []
-downcast_as_ReadIntoUninit = []
 nightly = []
-polonius-check = ["nightly"]
+specialization = ["nightly"]
+chain = []
 
 default = []
 

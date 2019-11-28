@@ -10,7 +10,7 @@ impl<R : ReadIntoUninit + ?Sized> ReadIntoUninit for &'_ mut R {
     #[inline]
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: &'buf mut [MaybeUninit<u8>],
+        buf: OutSlice<'buf, u8>,
     ) -> io::Result<&'buf mut [u8]>
     {
         (**self).read_into_uninit(buf)
@@ -26,7 +26,7 @@ unsafe
 impl ReadIntoUninit for &'_ [u8] {
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: &'buf mut [MaybeUninit<u8>],
+        mut buf: OutSlice<'buf, u8>,
     ) -> io::Result<&'buf mut [u8]>
     {
         let count = ::std::cmp::min(buf.len(), self.len());
@@ -37,7 +37,7 @@ impl ReadIntoUninit for &'_ [u8] {
         // `copy_from_slice` will generally expand to a call to `memcpy`, and
         // for a single byte the overhead is significant.
         if count == 1 {
-            buf[0] = MaybeUninit::new(to_copy[0]);
+            buf.reborrow().idx(0).unwrap().write(to_copy[0]);
         } else {
             unsafe {
                 // # Safety
@@ -50,13 +50,8 @@ impl ReadIntoUninit for &'_ [u8] {
                 //
                 //   - they cannot overlap given the `&mut` access on `buf`
                 ptr::copy_nonoverlapping::<u8>(
-                    to_copy
-                        .as_ptr()
-                    ,
-                utils::ptr_cast_mut::<MaybeUninit<u8>, u8>(
-                    buf
-                        .as_mut_ptr()
-                )   ,
+                    to_copy.as_ptr(),
+                    buf.as_mut_ptr(),
                     count,
                 );
             }
@@ -65,7 +60,7 @@ impl ReadIntoUninit for &'_ [u8] {
             // # Safety
             //
             //   - `buf[.. count]` has been initialized
-            <[MaybeUninit<u8>]>::assume_init_by_mut(&mut buf[.. count])
+            buf.idx(.. count).unwrap().assume_init()
         })
     }
 }
@@ -95,7 +90,7 @@ macro_rules! impl_ReadIntoUninit_for_impl_BufRead {(
             #[inline]
             fn read_into_uninit<'buf> (
                 self: &'_ mut Self,
-                buf: &'buf mut [MaybeUninit<u8>],
+                buf: OutSlice<'buf, u8>,
             ) -> io::Result<&'buf mut [u8]>
             {
                 let buf = {
@@ -138,7 +133,7 @@ impl<R : ReadIntoUninit + ?Sized> ReadIntoUninit for Box<R> {
     #[inline]
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: &'buf mut [MaybeUninit<u8>],
+        buf: OutSlice<'buf, u8>,
     ) -> io::Result<&'buf mut [u8]>
     {
         (**self).read_into_uninit(buf)

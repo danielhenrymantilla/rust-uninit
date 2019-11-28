@@ -14,5 +14,5 @@ macro_rules! pub_in_crate {(
 )}
 
 macro_rules! use_prelude {() => (
-    pub(in crate) use crate::prelude::*;
+    pub(in crate) use crate::utils::prelude::*;
 )}

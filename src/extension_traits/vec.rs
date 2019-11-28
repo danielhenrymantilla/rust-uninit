@@ -2,27 +2,30 @@ use crate::*;
 use ::core::slice;
 
 /// Extension trait for [`Vec`], that reserves extra uninitialized memory for
-/// it, and **returns a mutable handle on those extra (uninitialized) bytes**.
+/// it, and **returns a mutable handle on those extra (uninitialized) elements**.
 ///
 /// # Example
 ///
 /// ```rust
 /// # use ::core::mem::MaybeUninit;
-/// use ::uninit::{InitWithCopyFromSlice, VecReserveUninit};
+/// use ::uninit::prelude::*;
 ///
 /// let mut vec = b"Hello, ".to_vec();
 /// const WORLD: &[u8] = b"World!";
-/// let uninit_start: *mut u8 = vec.as_mut_ptr().wrapping_add(vec.len());
 ///
 /// let extra: &mut [MaybeUninit<u8>] = vec.reserve_uninit(WORLD.len());
-/// assert_eq!(extra.as_mut_ptr() as *mut u8, uninit_start);
-/// assert_eq!(extra.len(), WORLD.len());
+/// extra.as_out::<[u8]>().copy_from_slice(WORLD);
 ///
-/// extra.init_with_copy_from_slice(WORLD);
+/// // `.reserve_uninit()` guarantees the following properties:
+/// assert_eq!(extra.len(), WORLD.len());
+/// let extra_start: *mut u8 = extra.as_mut_ptr().cast();
+/// let uninit_start: *mut u8 = vec.as_mut_ptr().wrapping_add(vec.len());
+/// assert_eq!(extra_start, uninit_start);
+///
 /// unsafe {
 ///     // # Safety
 ///     //
-///     //   - `.init_with_copy_from_slice()` contract guarantees initialization
+///     //   - `.copy_from_slice()` contract guarantees initialization
 ///     //     of `extra`, which, in turn, from `reserve_uninit`'s contract,
 ///     //     leads to the `vec` extra capacity having been initialized.
 ///     vec.set_len(vec.len() + WORLD.len());
@@ -34,35 +37,35 @@ use ::core::slice;
 /// ```
 pub
 trait VecReserveUninit {
+    type Item;
+
     fn reserve_uninit (self: &'_ mut Self, additional: usize)
-        -> &'_ mut [MaybeUninit<u8>]
+        -> &'_ mut [MaybeUninit<Self::Item>]
     ;
 }
-impl VecReserveUninit for Vec<u8> {
+impl<T> VecReserveUninit for Vec<T> {
+    type Item = T;
+
     fn reserve_uninit (self: &'_ mut Self, additional: usize)
-        -> &'_ mut [MaybeUninit<u8>]
+        -> &'_ mut [MaybeUninit<T>]
     {
         self.reserve(additional);
         unsafe {
             // # Safety
             //
-            //  1. Vec<T> contract guarantees that after a call to `.reserve(n)`
+            //  - Vec<T> contract guarantees that after a call to `.reserve(n)`
             //     at least `n` uninitialized elements after the end of the
             //     Vec's current length can be soundly written to.
-            //
-            //  2. `Vec` also guarantees that `self.len()` does not overflow
-            //     `isize`, so neither does `self.len() * 1`
-            slice::from_raw_parts_mut( // 1.
-                utils::ptr_cast_mut::<u8, MaybeUninit<u8>>(
+            slice::from_raw_parts_mut(
+                utils::ptr_cast_mut::<T, MaybeUninit<T>>(
                     self.as_mut_ptr()
-                        .add(self.len()) // 2.
+                        .wrapping_add(self.len())
                 ),
                 additional,
             )
         }
     }
 }
-
 
 /// Extension trait for [`Vec`], that grows the vec by a _bounded_ amount of
 /// bytes, obtained when reading from `R`.
@@ -73,7 +76,7 @@ impl VecReserveUninit for Vec<u8> {
 /// # Example
 ///
 /// ```rust
-/// use ::uninit::VecExtendFromReader;
+/// use ::uninit::read::VecExtendFromReader;
 ///
 /// let mut reader = &b"World!"[..];
 /// let mut vec = b"Greetings, ".to_vec();
@@ -101,12 +104,11 @@ impl<R : ReadIntoUninit> VecExtendFromReader<R> for Vec<u8> {
         mut reader: R,
     ) -> io::Result<()>
     {
-        let buf: &mut [MaybeUninit<u8>] = self.reserve_uninit(count);
+        let buf: OutSlice<u8> = self.reserve_uninit(count).into();
         let buf: &mut [u8] = reader.read_into_uninit_exact(buf)?;
         let count: usize = buf.len();
         debug_assert_eq!(
-            buf .as_mut_ptr()
-            ,
+            buf.as_mut_ptr(),
             self.as_mut_ptr()
                 .wrapping_add(self.len())
             ,

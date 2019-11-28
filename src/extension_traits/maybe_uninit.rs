@@ -5,6 +5,38 @@ use_prelude!();
 /// This is currently only implemented for [`Copy`] types, since the
 /// semantics when [`drop` glue][`mem::needs_drop`] is involved are less
 /// easy to handle correctly (danger of leaking memory).
+///
+/// # `from_mut`?
+///
+/// The conversion `&mut T` to `&mut MaybeUninit<T>` is actually unsound,
+/// since there is nothing preventing the obtained `mut` reference to be used
+/// to overwrite the pointee with `MaybeUninit::uninit()`, _i.e._, an
+/// uninitialised (and thus garbage) value:
+///
+/// ```rust,no_run
+/// use ::core::mem::{MaybeUninit, transmute};
+///
+/// unsafe fn from_mut<T> (it: &'_ mut T) -> &'_ mut MaybeUninit<T>
+/// {
+///     transmute(it)
+/// }
+///
+/// let mut x = Box::new(42);
+/// let at_x_uninit: &mut MaybeUninit<Box<i32>> = unsafe {
+///     // If this were safe...
+///     from_mut(&mut x)
+/// };
+/// // Then safe code would be able to do this:
+/// *at_x_uninit = MaybeUninit::uninit(); // <--------+
+/// // drop(x); // drops an uninitialized value! UB --+
+/// ```
+///
+/// The author of the crate did overlook that and offered such transformation
+/// within a non-`unsafe` function, leading to an unsound function. And now, to
+/// that version being yanked.
+///
+/// The correct way to do this now is through
+/// [the `&out` reference abstraction][`crate::out_references`].
 pub
 trait MaybeUninitExt {
     type T : ?Sized;
@@ -27,10 +59,6 @@ trait MaybeUninitExt {
 
     fn from_ref (init_ref: &'_ Self::T)
         -> &'_ Self
-    ;
-
-    fn from_mut (init_mut: &'_ mut Self::T)
-        -> &'_ mut Self
     ;
 }
 
@@ -72,17 +100,6 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
             mem::transmute(some_ref)
         }
     }
-
-    fn from_mut (some_mut_ref: &'_ mut Self::T)
-        -> &'_ mut Self
-    {
-        unsafe {
-            // # Safety
-            //
-            //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(some_mut_ref)
-        }
-    }
 }
 
 #[require_unsafe_in_bodies]
@@ -97,7 +114,11 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(self)
+            let len = self.len();
+            slice::from_raw_parts(
+                self.as_ptr().cast(),
+                len,
+            )
         }
     }
 
@@ -109,7 +130,11 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(self)
+            let len = self.len();
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr().cast(),
+                len,
+            )
         }
     }
 
@@ -120,18 +145,11 @@ impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(slice)
-        }
-    }
-
-    fn from_mut (slice: &'_ mut Self::T)
-        -> &'_ mut Self
-    {
-        unsafe {
-            // # Safety
-            //
-            //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(slice)
+            let len = slice.len();
+            slice::from_raw_parts(
+                slice.as_ptr().cast(),
+                len,
+            )
         }
     }
 }
