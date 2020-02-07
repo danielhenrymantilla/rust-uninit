@@ -11,7 +11,7 @@ mod private {
     impl<T : ?Sized> Is for T { type Eq = T; }
 }
 
-/// Helper / extension trait to convert a `&mut _` into a `&out T` by calling
+/// Extension trait to convert a `&mut _` into a `&out T` by calling
 /// `.as_out::<T>()` on it.
 ///
 /// By autoref, this means that you can even just extract a `&out T` reference
@@ -129,8 +129,55 @@ impl<'out, T : 'out> AsOut<[T]> for &'out mut [ManuallyDrop<T>] {
     }
 }
 
-macro_rules! impl_arrays {( $($N:tt)* ) => ($(
-    impl<'out, T : 'out> AsOut<[T]> for &'out mut [MaybeUninit<T>; $N] {
+#[cfg(not(feature = "const_generics"))]
+const _: () = {
+    macro_rules! impl_arrays {( $($N:tt)* ) => ($(
+        impl<'out, T : 'out> AsOut<[T]> for &'out mut [MaybeUninit<T>; $N] {
+            type Out = OutSlice<'out, T>;
+
+            #[inline]
+            fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
+              -> OutSlice<'out, T>
+            {
+                From::from(&mut self[..])
+            }
+        }
+        impl<'out, T : 'out> AsOut<[T]> for &'out mut [T; $N]
+        where
+            T : Copy,
+        {
+            type Out = OutSlice<'out, T>;
+
+            #[inline]
+            fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
+              -> OutSlice<'out, T>
+            {
+                From::from(&mut self[..])
+            }
+        }
+    )*)}
+
+    impl_arrays! {
+           0  1  2  3  4  5  6  7
+           8  9 10 11 12 13 14 15
+          16 17 18 19 20 21 22 23
+          24 25 26 27 28 29 30 31
+          32 33 34 35 36 37 38 39
+          40 41 42 43 44 45 46 47
+          48 49 50 51 52 53 54 55
+          56 57 58 59 60 61 62 63
+          64
+         128
+         256
+         512
+        1024
+    }
+};
+
+#[cfg(feature = "const_generics")]
+const _: () = {
+    #[doc(cfg(feature = "const_generics"))]
+    impl<'out, T : 'out, const N: usize> AsOut<[T]> for &'out mut [MaybeUninit<T>; N] {
         type Out = OutSlice<'out, T>;
 
         #[inline]
@@ -140,16 +187,18 @@ macro_rules! impl_arrays {( $($N:tt)* ) => ($(
             From::from(&mut self[..])
         }
     }
-)*)}
+    #[doc(cfg(feature = "const_generics"))]
+    impl<'out, T : 'out, const N: usize> AsOut<[T]> for &'out mut [T; N]
+    where
+        T : Copy,
+    {
+        type Out = OutSlice<'out, T>;
 
-impl_arrays! {
-    0 1 2 3 4 5 6 7 8
-    9 10 11 12 13 14 15 16
-    17 18 19 20 21 22 23 24
-    25 26 27 28 29 30 31 32
-    33 34 35 36 37 38 39 40
-    41 42 43 44 45 46 47 48
-    49 50 51 52 53 54 55 56
-    57 58 59 60 61 62 63 64
-    128 256 512 1024
-}
+        #[inline]
+        fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
+          -> OutSlice<'out, T>
+        {
+            From::from(&mut self[..])
+        }
+    }
+};

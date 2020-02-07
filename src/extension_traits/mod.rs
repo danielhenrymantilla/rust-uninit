@@ -3,6 +3,11 @@ pub use self::as_out::{
 };
 mod as_out;
 
+pub use self::boxed::{
+    BoxUninit,
+};
+mod boxed;
+
 pub use self::manually_drop_mut::{
     ManuallyDropMut,
 };
@@ -15,6 +20,6 @@ mod maybe_uninit;
 
 pub use self::vec::{
     VecExtendFromReader,
-    VecReserveUninit,
+    VecAllocation,
 };
 mod vec;

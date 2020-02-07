@@ -3,7 +3,6 @@ use ::core::{
         ManuallyDrop,
         MaybeUninit,
     },
-    ptr,
     slice,
 };
 
@@ -271,7 +270,7 @@ impl<'out, T : 'out> OutSlice<'out, T> {
 
     #[inline]
     pub
-    fn idx<Index> (self: OutSlice<'out, T>, idx: Index)
+    fn get_out<Index> (self: OutSlice<'out, T>, idx: Index)
       -> Option<Index::Output>
     where
         Index : SliceIndex<'out, T>,
@@ -379,38 +378,23 @@ impl<'out, T : 'out> OutSlice<'out, T> {
     /// ```
     pub
     fn copy_from_slice (
-        mut self: OutSlice<'out, T>,
+        self: OutSlice<'out, T>,
         source_slice: &'_ [T],
     ) -> &'out mut [T]
     where
         T : Copy,
     {
-        assert_eq!(
-            self.len(),
-            source_slice.len(),
-            "`copy_from_slice()`: length mismatch",
-        );
         unsafe {
             // # Safety
             //
-            //   - `T : Copy`
-            //
-            //   - `OutSlice` is unaliased and thus guarantees no overlap;
-            //
-            //   - `self[.. len]` is valid to write to;
-            //
-            //   - `source_slice[.. len]` is valid to read (and copy) from.
-            ptr::copy_nonoverlapping(
-                source_slice.as_ptr(),
-                self.as_mut_ptr(),
-                self.len(),
-            );
-        }
-        unsafe {
-            // # Safety
+            //   - Writing to `self.0` is fine since `source_slice` only
+            //     contains initialized elements.
             //
             //   - the `copy_nonoverlapping()` call guarantees that the buffer
             //     has been initialized.
+            self.0.copy_from_slice(
+                crate::extension_traits::MaybeUninitExt::from_ref(source_slice)
+            );
             self.assume_init()
         }
     }
@@ -429,7 +413,7 @@ impl<'out, T : 'out> OutSlice<'out, T> {
     {
         let len = self.len();
         (0 .. len).for_each(|i| {
-            self.r().idx(i).unwrap().write(factory(i));
+            self.r().get_out(i).unwrap().write(factory(i));
         });
         unsafe {
             // Safety: The `len` values of the buffer have been initialized

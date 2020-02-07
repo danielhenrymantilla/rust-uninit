@@ -2,7 +2,7 @@ use ::core::mem::ManuallyDrop;
 
 #[cfg(doc)] use crate::Out;
 
-/// An extension trait providing a cast to the [`ManuallyDrop`] type.
+/// Extension trait providing a cast to the [`ManuallyDrop`] type.
 ///
 /// This is useful if you want to use an [`Out`] reference to something that
 /// is not `Copy` (potentially because it has drop glue, in which case you

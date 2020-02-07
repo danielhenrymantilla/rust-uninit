@@ -5,6 +5,12 @@
 #![cfg_attr(feature = "specialization",
     feature(specialization),
 )]
+#![cfg_attr(feature = "const_generics",
+    feature(const_generics),
+)]
+#![deny(
+    elided_lifetimes_in_paths,
+)]
 
 #[macro_use]
 extern crate require_unsafe_in_body;
@@ -16,8 +22,9 @@ pub mod prelude {
     pub use crate::{
         extension_traits::{
             AsOut,
+            BoxUninit,
             ManuallyDropMut,
-            VecReserveUninit,
+            VecAllocation,
         },
         out_references::{
             Out,
@@ -25,6 +32,7 @@ pub mod prelude {
         },
         uninit_array,
     };
+    pub use ::core::mem::MaybeUninit;
 }
 
 use_prelude!();

@@ -68,7 +68,7 @@ trait ReadIntoUninit : Read {
                     },
                     | Ok(n) => {
                         // buf = &mut buf[n ..];
-                        buf = buf.idx(n ..).unwrap();
+                        buf = buf.get_out(n ..).unwrap();
                     },
                     | Err(ref e)
                         if e.kind() == io::ErrorKind::Interrupted
@@ -210,13 +210,7 @@ mod chain {
         {
             let len = buf.len();
             if len == 0 {
-                return Ok(unsafe {
-                    // # Safety
-                    //
-                    //   - since it has `0` elements,
-                    //     it does have `0` initialized elements.
-                    buf.assume_init()
-                })
+                return Ok(self.copy_from_slice(&[]));
             }
             if self.first_done.not() {
                 let buf_ = self.first.read_into_uninit(buf.r())?;
@@ -227,7 +221,7 @@ mod chain {
                         // Safety: `buf_` has been a witness of the
                         // initialization of these bytes.
                         let len = buf_.len();
-                        let buf = buf.idx(.. len).unwrap();
+                        let buf = buf.get_out(.. len).unwrap();
                         Ok(buf.assume_init())
                     };
                 }

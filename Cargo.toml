@@ -1,3 +1,6 @@
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [package]
 name = "uninit"
 version = "0.1.0"
@@ -20,6 +23,7 @@ require_unsafe_in_body = "0.2.0"
 [features]
 nightly = []
 specialization = ["nightly"]
+const_generics = ["nightly"]
 chain = []
 
 default = []
