@@ -411,34 +411,23 @@ impl<'out, T : 'out> OutSlice<'out, T> {
         mut factory: impl FnMut(usize) -> T,
     ) -> &'out mut [T]
     {
-        let len = self.len();
-        (0 .. len).for_each(|i| {
-            self.r().get_out(i).unwrap().write(factory(i));
-        });
+        self.iter_out()
+            .enumerate()
+            .for_each(|(i, at_dst)| { at_dst.write(factory(i)); })
+        ;
         unsafe {
             // Safety: The `len` values of the buffer have been initialized
             self.assume_init()
         }
     }
 
+    /// `.reborrow().into_iter()`
     #[inline]
     pub
     fn iter_out (self: &'_ mut OutSlice<'out, T>)
-      -> impl Iterator<Item = Out<'_, T>> + '_
+      -> iter::IterOut<'_, T>
     {
-        ::core::iter::from_fn({
-            let mut slice = &mut *self.0;
-            move || Some({
-                if slice.is_empty() { return None; }
-                let (first, rest) =
-                    mem::replace(&mut slice, &mut [])
-                        .split_at_mut(1)
-                ;
-                let first: &mut MaybeUninit<T> = &mut first[0];
-                slice = rest;
-                first.into()
-            })
-        })
+        self.r().into_iter()
     }
 
     #[inline]
@@ -475,5 +464,45 @@ mod private {
         fn idx (self: Self, slice: OutSlice<'out, T>)
           -> Option<Self::Output>
         ;
+    }
+}
+
+pub
+mod iter {
+    use super::*;
+
+    pub
+    struct IterOut<'out, T : 'out> /* = */ (
+        pub
+        OutSlice<'out, T>,
+    );
+
+    impl<'out, T : 'out> IntoIterator for OutSlice<'out, T> {
+        type Item = Out<'out, T>;
+        type IntoIter = IterOut<'out, T>;
+
+        fn into_iter (self: OutSlice<'out, T>)
+          -> IterOut<'out, T>
+        {
+            IterOut(self)
+        }
+    }
+
+    impl<'out, T : 'out> Iterator for IterOut<'out, T> {
+        type Item = Out<'out, T>;
+
+        #[inline]
+        fn next (self: &'_ mut IterOut<'out, T>)
+          -> Option<Out<'out, T>>
+        {
+            let this = &mut self.0;
+            if this.is_empty() { return None; }
+            let slice = mem::replace(this, <&mut [MaybeUninit<T>]>::into(&mut []));
+            let (first, rest) = slice.split_at_out(1);
+            *this = rest;
+            Some(first.get_out(0).unwrap_or_else(|| unsafe {
+                ::core::hint::unreachable_unchecked()
+            }))
+        }
     }
 }

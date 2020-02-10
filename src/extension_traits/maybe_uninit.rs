@@ -32,8 +32,8 @@ use_prelude!();
 /// ```
 ///
 /// The author of the crate did overlook that and offered such transformation
-/// within a non-`unsafe` function, leading to an unsound function. And now, to
-/// that version being yanked.
+/// within a non-`unsafe` function, leading to an unsound function. Hence the
+/// yanked versions of the crate.
 ///
 /// The correct way to do this now is through
 /// [the `&out` reference abstraction][`crate::out_references`].

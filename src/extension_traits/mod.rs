@@ -20,6 +20,6 @@ mod maybe_uninit;
 
 pub use self::vec::{
     VecExtendFromReader,
-    VecAllocation,
+    VecCapacity,
 };
 mod vec;

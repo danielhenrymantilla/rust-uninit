@@ -182,7 +182,7 @@ mod chain {
     {
         pub
         fn into_inner (self: Self)
-            -> (R1, R2)
+          -> (R1, R2)
         {
             let Self { first, second, ..} = self;
             (first, second)
@@ -190,7 +190,7 @@ mod chain {
 
         pub
         fn get_ref (self: &'_ Self)
-            -> (&'_ R1, &'_ R2)
+          -> (&'_ R1, &'_ R2)
         {
             let Self { first, second, ..} = self;
             (first, second)

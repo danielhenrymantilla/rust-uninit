@@ -24,7 +24,7 @@ pub mod prelude {
             AsOut,
             BoxUninit,
             ManuallyDropMut,
-            VecAllocation,
+            VecCapacity,
         },
         out_references::{
             Out,

@@ -9,6 +9,8 @@ use ::core::mem::ManuallyDrop;
 /// either don't mind leaking / skipping that drop glue, or you know you will
 /// be manually handling it).
 ///
+/// ⚠️ **Misusage of this function can thus lead to memory leaks** ⚠️
+///
 /// # Example
 ///
 /// ```rust,compile_fail

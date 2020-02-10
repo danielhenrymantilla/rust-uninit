@@ -116,12 +116,13 @@ impl<T> BoxUninit for Box<MaybeUninit<T>> {
       -> Option<Box<MaybeUninit<T>>>
     {Some({
         if ::core::mem::size_of::<T>() == 0 {
-            Box::new(MaybeUninit::uninit())
+            Self::new(MaybeUninit::uninit())
         } else {
             unsafe {
+                // Safety: we have guarded against ZST
                 let layout = alloc::Layout::new::<T>();
                 Self::from_raw(
-                    ptr::NonNull::<T>::new(alloc::alloc(layout).cast())?
+                    ptr::NonNull::new(alloc::alloc(layout))?
                         .as_ptr()
                         .cast()
 
@@ -137,8 +138,9 @@ impl<T> BoxUninit for Box<MaybeUninit<T>> {
     fn init (mut self: Box<MaybeUninit<T>>, value: T)
       -> Box<T>
     {
+        *self = MaybeUninit::new(value);
         unsafe {
-            self.as_mut_ptr().write(value);
+            // Safety: `self` has just been initialized.
             Box::from_raw(Box::into_raw(self).cast())
         }
     }
@@ -151,10 +153,10 @@ trait BoxUninit : Sealed {
     fn uninit ()
       -> Self
     ;
-    fn try_alloc ()
-      -> Option<Self>
-    ;
     fn init (self, value: Self::T)
       -> Box<Self::T>
+    ;
+    fn try_alloc ()
+      -> Option<Self>
     ;
 }

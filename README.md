@@ -180,7 +180,7 @@ pub trait Read {
 }
 ```
 
-that is, there is no way to `.read()` into an unitialized buffer (it would
+that is, there is no way to `.read()` into an uninitialized buffer (it would
 require an api taking either a `(*mut u8, usize)` pair, or, equivalently and
 by the way more ergonomically, a [`&out [u8]`][`crate::prelude::OutSlice`]).
 
@@ -211,6 +211,6 @@ So, the objective of this crate is double:
 [`.assume_init_by_ref()`]: `crate::extension_traits::MaybeUninitExt::assume_init_by_ref`
 [`.assume_init_by_mut()`]: `crate::extension_traits::MaybeUninitExt::assume_init_by_mut`
 [`uninit_array!`]: `uninit_array`
-[`Vec::reserve_uninit`]: `crate::extension_traits::VecReserveUninit::reserve_uninit`
+[`Vec::reserve_uninit`]: `crate::extension_traits::VecCapacity::reserve_uninit`
 [`.init_with_copy_from_slice()`]: `crate::out_references::OutSlice::copy_from_slice`
 [`ReadIntoUninit`]: `crate::read::ReadIntoUninit`
