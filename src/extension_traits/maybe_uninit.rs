@@ -36,7 +36,7 @@ use_prelude!();
 /// yanked versions of the crate.
 ///
 /// The correct way to do this now is through
-/// [the `&out` reference abstraction][`crate::out_references`].
+/// [the `&out` reference abstraction][`crate::out_ref`].
 pub
 trait MaybeUninitExt {
     type T : ?Sized;

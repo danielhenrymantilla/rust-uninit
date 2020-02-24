@@ -10,7 +10,7 @@ impl<R : ReadIntoUninit + ?Sized> ReadIntoUninit for &'_ mut R {
     #[inline]
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         (**self).read_into_uninit(buf)
@@ -26,7 +26,7 @@ unsafe
 impl ReadIntoUninit for &'_ [u8] {
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         let count = ::std::cmp::min(buf.len(), self.len());
@@ -70,7 +70,7 @@ macro_rules! impl_ReadIntoUninit_for_impl_BufRead {(
             #[inline]
             fn read_into_uninit<'buf> (
                 self: &'_ mut Self,
-                buf: OutSlice<'buf, u8>,
+                buf: Out<'buf, [u8]>,
             ) -> io::Result<&'buf mut [u8]>
             {
                 let buf = {
@@ -113,7 +113,7 @@ impl<R : ReadIntoUninit + ?Sized> ReadIntoUninit for Box<R> {
     #[inline]
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         (**self).read_into_uninit(buf)

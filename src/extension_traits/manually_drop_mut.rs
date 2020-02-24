@@ -18,7 +18,7 @@ use ::core::mem::ManuallyDrop;
 /// use ::uninit::prelude::{AsOut, ManuallyDropMut};
 ///
 /// let mut cell = Cell::new(0);
-/// cell.as_out::<Cell<_>>().write(Cell::new(42)); // Error, not `Copy`
+/// cell.as_out().write(Cell::new(42)); // Error, not `Copy`
 /// assert_eq!(cell.get(), 42);
 /// ```
 ///
@@ -27,7 +27,7 @@ use ::core::mem::ManuallyDrop;
 /// use ::uninit::prelude::{AsOut, ManuallyDropMut};
 ///
 /// let mut cell = Cell::new(0);
-/// cell.manually_drop_mut().as_out::<Cell<_>>().write(Cell::new(42)); // OK
+/// cell.manually_drop_mut().as_out().write(Cell::new(42)); // OK
 /// assert_eq!(cell.get(), 42);
 /// ```
 pub

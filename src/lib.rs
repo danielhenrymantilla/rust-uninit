@@ -26,9 +26,8 @@ pub mod prelude {
             ManuallyDropMut,
             VecCapacity,
         },
-        out_references::{
+        out_ref::{
             Out,
-            OutSlice,
         },
         uninit_array,
     };
@@ -44,7 +43,7 @@ pub
 mod read;
 
 pub
-mod out_references;
+mod out_ref;
 
 #[doc(hidden)]
 pub use ::core;
@@ -59,7 +58,7 @@ pub use ::core;
 ///
 /// let mut reader = &b"Hello, World!"[..];
 /// let mut backing_array = uninit_array![u8; 4]; // : [MaybeUninit<u8>; 4]
-/// let buf = OutSlice::from(&mut backing_array[..]);
+/// let buf = backing_array.as_out();
 /// assert_eq!(
 ///     reader.read_into_uninit_exact(buf).unwrap(),
 ///     b"Hell",

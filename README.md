@@ -124,7 +124,7 @@ It is all about the _**delayed** initialization pattern_:
 
         unsafe {
             x.as_mut_ptr().write(42);
-            assert_eq!(42, x.assume_init());
+            assert_eq!(x.assume_init(), 42);
         }
         ```
 
@@ -138,8 +138,8 @@ It is all about the _**delayed** initialization pattern_:
         use ::uninit::prelude::*;
 
         let mut x = MaybeUninit::uninit();
-        let at_init_x: &i32 = x.as_out::<i32>().write(42);
-        assert_eq!(42, *at_init_x);
+        let at_init_x: &i32 = x.as_out().write(42);
+        assert_eq!(at_init_x, &42);
         ```
 
  3. **Type-level upgrade**
@@ -182,7 +182,7 @@ pub trait Read {
 
 that is, there is no way to `.read()` into an uninitialized buffer (it would
 require an api taking either a `(*mut u8, usize)` pair, or, equivalently and
-by the way more ergonomically, a [`&out [u8]`][`crate::prelude::OutSlice`]).
+by the way more ergonomically, a [`&out [u8]`][`crate::prelude::Out`]).
 
 # Enter `::uninit`
 
@@ -203,7 +203,7 @@ So, the objective of this crate is double:
 
       - [`ReadIntoUninit`]
 
-      - [`.init_with_copy_from_slice()`]
+      - [Initialize an uninitialized buffer with `.copy_from_slice()`]
 
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
@@ -212,5 +212,5 @@ So, the objective of this crate is double:
 [`.assume_init_by_mut()`]: `crate::extension_traits::MaybeUninitExt::assume_init_by_mut`
 [`uninit_array!`]: `uninit_array`
 [`Vec::reserve_uninit`]: `crate::extension_traits::VecCapacity::reserve_uninit`
-[`.init_with_copy_from_slice()`]: `crate::out_references::OutSlice::copy_from_slice`
+[Initialize an uninitialized buffer with `.copy_from_slice()`]: `crate::out_ref::Out::copy_from_slice`
 [`ReadIntoUninit`]: `crate::read::ReadIntoUninit`

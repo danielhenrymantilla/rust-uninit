@@ -37,7 +37,7 @@ trait ReadIntoUninit : Read {
     /// [`.read()`][`Read::read`] for more information.
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     ;
 
@@ -50,7 +50,7 @@ trait ReadIntoUninit : Read {
     /// information.
     fn read_into_uninit_exact<'buf> (
         self: &'_ mut Self,
-        mut buf: OutSlice<'buf, u8>,
+        mut buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         {
@@ -118,7 +118,7 @@ macro_rules! auto_impl {(
         {
             <Self as ReadIntoUninit>::read_into_uninit(
                 self,
-                buf.as_out_slice(),
+                buf.as_out(),
             ).map(|x| x.len())
         }
     }
@@ -131,7 +131,7 @@ unsafe impl<R : Read> ReadIntoUninit for R {
     default
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         let buf = buf.fill_with(|_| 0);
@@ -142,7 +142,7 @@ unsafe impl<R : Read> ReadIntoUninit for R {
     default
     fn read_into_uninit_exact<'buf> (
         self: &'_ mut Self,
-        buf: OutSlice<'buf, u8>,
+        buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
         let buf = buf.fill_with(|_| 0);
@@ -205,12 +205,12 @@ mod chain {
     {
         fn read_into_uninit<'buf> (
             self: &'_ mut Self,
-            mut buf: OutSlice<'buf, u8>,
+            mut buf: Out<'buf, [u8]>,
         )   -> io::Result<&'buf mut [u8]>
         {
             let len = buf.len();
             if len == 0 {
-                return Ok(self.copy_from_slice(&[]));
+                return Ok(buf.copy_from_slice(&[]));
             }
             if self.first_done.not() {
                 let buf_ = self.first.read_into_uninit(buf.r())?;

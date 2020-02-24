@@ -5,24 +5,15 @@ use ::core::mem::ManuallyDrop;
 #[cfg(doc)]
 use crate::extension_traits::ManuallyDropMut;
 
-use private::Is;
-mod private {
-    pub trait Is { type Eq : ?Sized; }
-    impl<T : ?Sized> Is for T { type Eq = T; }
-}
-
-/// Extension trait to convert a `&mut _` into a `&out T` by calling
-/// `.as_out::<T>()` on it.
+/// Extension trait to convert a `&mut _` into a `&out ` by calling
+/// `.as_out()` on it.
 ///
 /// By autoref, this means that you can even just extract a `&out T` reference
-/// out of a `mut` element simply by calling `.as_out::<T>()` on it.
+/// out of a `mut` element simply by calling `.as_out()` on it.
 ///
-/// There is, however, one restriction: to be able to call `.as_out::<_>()` on
+/// There is, however, one restriction: to be able to call `.as_out()` on
 /// something, it needs to be either `Copy`, or a value wrapped in a
 /// [`MaybeUninit`] / a [`ManuallyDrop`].
-///
-///   - (or a slice of such, in which case it yields a
-///     [fat `&out` reference][`OutSlice`])
 ///
 /// This is by design. Indeed, [`Out`] references do not call the destructor
 /// of the overwritten element (since it may not be initialized).
@@ -40,90 +31,76 @@ mod private {
 /// use ::uninit::prelude::*;
 ///
 /// let mut x = 0;
-/// x.as_out::<u32>().write(42);
+/// x.as_out().write(42);
 ///
 /// let mut y = ::core::mem::MaybeUninit::uninit();
-/// y.as_out::<u32>().write(42);
+/// y.as_out().write(42);
 /// let y = unsafe { y.assume_init() };
 ///
 /// assert_eq!(x, y);
 /// ```
 pub
-trait AsOut<Pointee_ : ?Sized> {
-    type Out;
-
-    fn as_out<Pointee : ?Sized + Is<Eq=Pointee_>> (self: Self)
-      -> Self::Out
+trait AsOut<Pointee : ?Sized> {
+    fn as_out<'out> (self: &'out mut Self)
+      -> Out<'out, Pointee>
     ;
 }
 
-impl<'out, T : 'out> AsOut<T> for &'out mut MaybeUninit<T> {
-    type Out = Out<'out, T>;
-
+impl<T> AsOut<T> for MaybeUninit<T> {
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=T>> (self: &'out mut MaybeUninit<T>)
+    fn as_out<'out> (self: &'out mut MaybeUninit<T>)
       -> Out<'out, T>
     {
         self.into()
     }
 }
 
-impl<'out, T : 'out> AsOut<T> for &'out mut T
+impl<T> AsOut<T> for T
 where
     T : Copy,
 {
-    type Out = Out<'out, T>;
-
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=T>> (self: &'out mut T)
+    fn as_out<'out> (self: &'out mut T)
       -> Out<'out, T>
     {
         self.into()
     }
 }
 
-impl<'out, T : 'out> AsOut<[T]> for &'out mut [MaybeUninit<T>] {
-    type Out = OutSlice<'out, T>;
-
+impl<T> AsOut<[T]> for [MaybeUninit<T>] {
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: &'out mut [MaybeUninit<T>])
-      -> OutSlice<'out, T>
+    fn as_out<'out> (self: &'out mut [MaybeUninit<T>])
+      -> Out<'out, [T]>
     {
         self.into()
     }
 }
 
-impl<'out, T : 'out> AsOut<[T]> for &'out mut [T]
+impl<T> AsOut<[T]> for [T]
 where
     T : Copy,
 {
-    type Out = OutSlice<'out, T>;
-
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: &'out mut [T])
-      -> OutSlice<'out, T>
+    fn as_out<'out> (self: &'out mut [T])
+      -> Out<'out, [T]>
     {
         self.into()
     }
 }
 
-impl<'out, T : 'out> AsOut<T> for &'out mut ManuallyDrop<T> {
-    type Out = Out<'out, T>;
-
+impl<T> AsOut<T> for ManuallyDrop<T> {
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=T>> (self: &'out mut ManuallyDrop<T>)
+    fn as_out<'out> (self: &'out mut ManuallyDrop<T>)
       -> Out<'out, T>
     {
         self.into()
     }
 }
 
-impl<'out, T : 'out> AsOut<[T]> for &'out mut [ManuallyDrop<T>] {
-    type Out = OutSlice<'out, T>;
-
+impl<T> AsOut<[T]> for [ManuallyDrop<T>] {
     #[inline]
-    fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: &'out mut [ManuallyDrop<T>])
-      -> OutSlice<'out, T>
+    fn as_out<'out> (self: &'out mut [ManuallyDrop<T>])
+      -> Out<'out, [T]>
     {
         self.into()
     }
@@ -132,25 +109,21 @@ impl<'out, T : 'out> AsOut<[T]> for &'out mut [ManuallyDrop<T>] {
 #[cfg(not(feature = "const_generics"))]
 const _: () = {
     macro_rules! impl_arrays {( $($N:tt)* ) => ($(
-        impl<'out, T : 'out> AsOut<[T]> for &'out mut [MaybeUninit<T>; $N] {
-            type Out = OutSlice<'out, T>;
-
+        impl<T> AsOut<[T]> for [MaybeUninit<T>; $N] {
             #[inline]
-            fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
-              -> OutSlice<'out, T>
+            fn as_out<'out> (self: &'out mut Self)
+              -> Out<'out, [T]>
             {
                 From::from(&mut self[..])
             }
         }
-        impl<'out, T : 'out> AsOut<[T]> for &'out mut [T; $N]
+        impl<T> AsOut<[T]> for [T; $N]
         where
             T : Copy,
         {
-            type Out = OutSlice<'out, T>;
-
             #[inline]
-            fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
-              -> OutSlice<'out, T>
+            fn as_out<'out> (self: &'out mut Self)
+              -> Out<'out, [T]>
             {
                 From::from(&mut self[..])
             }
@@ -177,26 +150,22 @@ const _: () = {
 #[cfg(feature = "const_generics")]
 const _: () = {
     #[doc(cfg(feature = "const_generics"))]
-    impl<'out, T : 'out, const N: usize> AsOut<[T]> for &'out mut [MaybeUninit<T>; N] {
-        type Out = OutSlice<'out, T>;
-
+    impl<T, const N: usize> AsOut<[T]> for [MaybeUninit<T>; N] {
         #[inline]
-        fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
-          -> OutSlice<'out, T>
+        fn as_out<'out> (self: &'out mut Self)
+          -> Out<'out, [T]>
         {
             From::from(&mut self[..])
         }
     }
     #[doc(cfg(feature = "const_generics"))]
-    impl<'out, T : 'out, const N: usize> AsOut<[T]> for &'out mut [T; N]
+    impl<T, const N: usize> AsOut<[T]> for [T; N]
     where
         T : Copy,
     {
-        type Out = OutSlice<'out, T>;
-
         #[inline]
-        fn as_out<Pointee : ?Sized + Is<Eq=[T]>> (self: Self)
-          -> OutSlice<'out, T>
+        fn as_out<'out> (self: &'out mut Self)
+          -> Out<'out, [T]>
         {
             From::from(&mut self[..])
         }

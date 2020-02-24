@@ -8,13 +8,13 @@ trait VecCapacity : Sealed {
     type Item;
 
     fn split_at_extra_cap (self: &'_ mut Self)
-      -> (&'_ mut [Self::Item], OutSlice<'_, Self::Item>)
+      -> (&'_ mut [Self::Item], Out<'_, [Self::Item]>)
     ;
     fn reserve_uninit (self: &'_ mut Self, additional: usize)
-      -> OutSlice<'_, Self::Item>
+      -> Out<'_, [Self::Item]>
     ;
     fn get_backing_buffer (self: &'_ mut Self)
-      -> OutSlice<'_, Self::Item>
+      -> Out<'_, [Self::Item]>
     where
         Self::Item : Copy, // Opinionated stance against accidental memory leaks
     ;
@@ -24,7 +24,7 @@ trait VecCapacity : Sealed {
         Self::Item : Copy, // Opinionated stance against accidental memory leaks
     ;
     fn get_backing_buffer_manually_drop (self: &'_ mut Self)
-      -> OutSlice<'_, Self::Item>
+      -> Out<'_, [Self::Item]>
     ;
     fn into_backing_buffer_manually_drop (self: Self)
       -> Box<[MaybeUninit<Self::Item>]>
@@ -103,7 +103,7 @@ impl<T> VecCapacity for Vec<T> {
     /// ```
     #[inline]
     fn split_at_extra_cap (self: &'_ mut Vec<T>)
-      -> (&'_ mut [T], OutSlice<'_, T>)
+      -> (&'_ mut [T], Out<'_, [T]>)
     {
         let len = self.len();
         let backing_buffer = self.get_backing_buffer_manually_drop();
@@ -130,7 +130,7 @@ impl<T> VecCapacity for Vec<T> {
     /// let mut vec = b"Hello, ".to_vec();
     /// const WORLD: &[u8] = b"World!";
     ///
-    /// let mut extra: OutSlice<u8> = vec.reserve_uninit(WORLD.len());
+    /// let mut extra: Out<'_, [u8]> = vec.reserve_uninit(WORLD.len());
     /// extra.r().copy_from_slice(WORLD);
     ///
     /// // `.reserve_uninit()` guarantees the following properties:
@@ -154,23 +154,22 @@ impl<T> VecCapacity for Vec<T> {
     /// ```
     #[inline]
     fn reserve_uninit (self: &'_ mut Vec<T>, additional: usize)
-      -> OutSlice<'_, T>
+      -> Out<'_, [T]>
     {
         self.reserve(additional);
         let (_, extra) = self.split_at_extra_cap();
         unsafe {
             // Safety: `Vec<T>` guarantees that `cap >= len + additional` and
             // thus that `cap - len >= additional`.
-            extra.get_out(.. additional)
-                 .unwrap_or_else(|| hint::unreachable_unchecked())
+            extra.get_out_unchecked(.. additional)
         }
     }
 
-    /// Gets an [`&out [T]` slice][`OutSlice`] (of `self.capacity()` elements)
+    /// Gets an [`&out [T]`][`Out`] slice (of `self.capacity()` elements)
     /// to the backing buffer.
     #[inline]
     fn get_backing_buffer (self: &'_ mut Vec<T>)
-      -> OutSlice<'_, T>
+      -> Out<'_, [T]>
     where
         T : Copy, // Opinionated stance against accidental memory leaks
     {
@@ -216,7 +215,7 @@ impl<T> VecCapacity for Vec<T> {
     /// ```
     #[inline]
     fn get_backing_buffer_manually_drop (self: &'_ mut Vec<T>)
-      -> OutSlice<'_, T>
+      -> Out<'_, [T]>
     {
         let capacity = self.capacity();
         unsafe {
@@ -228,7 +227,7 @@ impl<T> VecCapacity for Vec<T> {
             slice::from_raw_parts_mut(
                 self.as_mut_ptr().cast::<MaybeUninit<T>>(),
                 capacity,
-            ).as_out::<[T]>()
+            ).as_out()
         }
     }
 
@@ -315,7 +314,7 @@ impl<R : ReadIntoUninit> VecExtendFromReader<R> for Vec<u8> {
         mut reader: R,
     ) -> io::Result<()>
     {
-        let buf: OutSlice<'_, u8> = self.reserve_uninit(count);
+        let buf: Out<'_, [u8]> = self.reserve_uninit(count);
         let buf: &mut [u8] = reader.read_into_uninit_exact(buf)?;
         let count: usize = buf.len();
         debug_assert_eq!(
