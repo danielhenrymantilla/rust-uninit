@@ -3,18 +3,31 @@
 #![allow(unused_imports)]
 
 pub_in_crate! {
-    use std::{*,
+    use ::core::{
         convert::{
             TryFrom,
             TryInto,
         },
-        mem::MaybeUninit,
+        hint,
+        mem::{self,
+            MaybeUninit,
+        },
+        ptr,
         ops::{
             Not,
         },
+        slice,
+    };
+    #[cfg(feature = "std")]
+    use ::std::{
+        alloc,
+        io,
     };
     use crate::{
         prelude::*,
+    };
+    #[cfg(feature = "std")]
+    use crate::{
         extension_traits::{
             VecExtendFromReader,
         },

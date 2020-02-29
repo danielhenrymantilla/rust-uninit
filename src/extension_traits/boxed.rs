@@ -1,8 +1,10 @@
-use_prelude!();
+use_prelude!(); cfg_std! {
 
-use self::private::Sealed;
-mod private { pub trait Sealed : Sized {} }
-impl<T> Sealed for Box<MaybeUninit<T>> {}
+mod private {
+    pub trait Sealed : Sized {}
+    impl<T> Sealed for Box<::core::mem::MaybeUninit<T>>
+    {}
+}
 
 /// Extension trait for uninitalized `Box` allocations and
 /// the optimized delayed-initialization pattern.
@@ -147,8 +149,9 @@ impl<T> BoxUninit for Box<MaybeUninit<T>> {
 }
 /// Extension trait for uninitalized `Box` allocations and
 /// the optimized delayed-initialization pattern.
+#[allow(missing_docs)]
 pub
-trait BoxUninit : Sealed {
+trait BoxUninit : private::Sealed {
     type T;
     fn uninit ()
       -> Self
@@ -160,3 +163,76 @@ trait BoxUninit : Sealed {
       -> Option<Self>
     ;
 }
+
+mod private2 {
+    pub trait Sealed {}
+    impl<T> Sealed for Box<[::core::mem::MaybeUninit<T>]>
+    {}
+    impl<T> Sealed for Box<::core::mem::MaybeUninit<T>>
+    {}
+}
+
+impl<T> BoxAssumeInit for Box<[MaybeUninit<T>]> {
+    #[allow(missing_docs)]
+    type Ret = [T];
+
+
+    /// Allows to "`.assume_init()`" a boxed `[MaybeUninit<T>]`.
+    ///
+    /// # Safety
+    ///
+    ///   - This has the same safety requirements as
+    ///     [`.assume_init()`][`MaybeUninit::assume_init`].
+    #[inline]
+    unsafe
+    fn assume_init (this: Box<[MaybeUninit<T>]>)
+      -> Box<[T]>
+    {
+        let len = this.len();
+        let ptr = Box::leak(this).as_mut_ptr();
+        Box::from_raw(slice::from_raw_parts_mut(
+            ptr.cast(), len,
+        ))
+    }
+}
+
+impl<T> BoxAssumeInit for Box<MaybeUninit<T>> {
+    type Ret = T;
+
+    /// Allows to "`.assume_init()`" a boxed `MaybeUninit<T>`.
+    ///
+    /// # Safety
+    ///
+    ///   - This has the same safety requirements as
+    ///     [`.assume_init()`][`MaybeUninit::assume_init`].
+    #[inline]
+    unsafe
+    fn assume_init (this: Box<MaybeUninit<T>>)
+      -> Box<T>
+    {
+        Box::from_raw(Box::into_raw(this).cast())
+    }
+}
+
+/// Extension trait to `.assume_init()` through a `Box`.
+///
+/// This is a compatibility helper trait. For versions of Rust where the
+/// `feature(box_uninit)` is unstable, this trait enables the feature in stable
+/// Rust. This may trigger an `unstable_name_collisions` lint, but this is fine,
+/// since the implementation is the same. You can dismiss that lint with:
+///
+/// ```rust
+/// #![allow(unstable_name_collisions)]
+/// ```
+#[allow(missing_docs)]
+pub
+trait BoxAssumeInit : private2::Sealed {
+    type Ret : ?Sized;
+
+    unsafe
+    fn assume_init (this: Self)
+      -> Box<Self::Ret>
+    ;
+}
+
+} // cfg_std!

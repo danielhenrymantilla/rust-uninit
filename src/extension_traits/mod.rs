@@ -1,12 +1,9 @@
+//! Extension traits to enhance external types with useful methods.
+
 pub use self::as_out::{
     AsOut,
 };
 mod as_out;
-
-pub use self::boxed::{
-    BoxUninit,
-};
-mod boxed;
 
 pub use self::manually_drop_mut::{
     ManuallyDropMut,
@@ -18,8 +15,16 @@ pub use self::maybe_uninit::{
 };
 mod maybe_uninit;
 
-pub use self::vec::{
-    VecExtendFromReader,
-    VecCapacity,
-};
-mod vec;
+cfg_std! {
+    pub use self::boxed::{
+        BoxUninit,
+        BoxAssumeInit,
+    };
+    mod boxed;
+
+    pub use self::vec::{
+        VecExtendFromReader,
+        VecCapacity,
+    };
+    mod vec;
+}

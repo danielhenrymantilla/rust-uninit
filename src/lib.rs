@@ -2,6 +2,7 @@
     feature(doc_cfg, external_doc),
     doc(include = "../README.md"),
 )]
+//!
 #![cfg_attr(feature = "specialization",
     feature(specialization),
 )]
@@ -10,6 +11,13 @@
 )]
 #![deny(
     elided_lifetimes_in_paths,
+    missing_docs,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    unused_must_use,
+)]
+#![cfg_attr(not(feature = "std"),
+    no_std,
 )]
 
 #[macro_use]
@@ -18,19 +26,26 @@ extern crate require_unsafe_in_body;
 #[macro_use]
 mod utils;
 pub mod prelude {
+    //! Reexports of pervasive items.
     #[doc(no_inline)]
     pub use crate::{
         extension_traits::{
             AsOut,
-            BoxUninit,
             ManuallyDropMut,
-            VecCapacity,
         },
         out_ref::{
             Out,
         },
         uninit_array,
     };
+    cfg_std! {
+        #[doc(no_inline)]
+        pub use crate::extension_traits::{
+            BoxUninit,
+            BoxAssumeInit,
+            VecCapacity,
+        };
+    }
     pub use ::core::mem::MaybeUninit;
 }
 
@@ -39,8 +54,10 @@ use_prelude!();
 pub
 mod extension_traits;
 
-pub
-mod read;
+cfg_std! {
+    pub
+    mod read;
+}
 
 pub
 mod out_ref;

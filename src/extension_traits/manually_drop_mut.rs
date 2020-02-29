@@ -13,23 +13,50 @@ use ::core::mem::ManuallyDrop;
 ///
 /// # Example
 ///
+/// The following fails to compile because of the missing `Copy` bound:
+///
 /// ```rust,compile_fail
+/// use ::uninit::prelude::*;
 /// use ::core::cell::Cell;
-/// use ::uninit::prelude::{AsOut, ManuallyDropMut};
 ///
 /// let mut cell = Cell::new(0);
 /// cell.as_out().write(Cell::new(42)); // Error, not `Copy`
 /// assert_eq!(cell.get(), 42);
 /// ```
 ///
+/// We see here that the `Copy` bound can be too restrictive. By calling
+/// `.manually_drop_mut()`, we no longer need to satisfy this `Copy` bound; but
+/// then we need to be careful with memory leaks.
+///
+/// Since `::core::mem::needs_drop::<Cell<_>>() == false`, there is nothing to
+/// worry about:
+///
 /// ```rust
+/// use ::uninit::prelude::*;
 /// use ::core::cell::Cell;
-/// use ::uninit::prelude::{AsOut, ManuallyDropMut};
 ///
 /// let mut cell = Cell::new(0);
 /// cell.manually_drop_mut().as_out().write(Cell::new(42)); // OK
 /// assert_eq!(cell.get(), 42);
 /// ```
+///
+/// # Counterexample
+///
+/// ```rust
+/// use ::uninit::prelude::*;
+/// use ::std::rc::Rc;
+///
+/// let rc = Rc::new(());
+/// assert_eq!(Rc::strong_count(&rc), 1);
+/// let mut rc2 = Some(Rc::clone(&rc));
+/// assert_eq!(Rc::strong_count(&rc), 2);
+/// // This overwrites `rc2` without running any destructor whatsoever, hence
+/// // leaking the `rc` clone.
+/// rc2.manually_drop_mut().as_out().write(None);
+/// assert_eq!(Rc::strong_count(&rc), 2);
+/// assert!(Rc::try_unwrap(rc).is_err());
+/// ```
+#[allow(missing_docs)]
 pub
 trait ManuallyDropMut {
     type Ret : ?Sized;
@@ -42,6 +69,7 @@ trait ManuallyDropMut {
 impl<T> ManuallyDropMut for [T] {
     type Ret = [ManuallyDrop<T>];
 
+    #[inline]
     fn manually_drop_mut<'__> (self: &'__ mut [T])
       -> &'__ mut [ManuallyDrop<T>]
     {
@@ -58,6 +86,7 @@ impl<T> ManuallyDropMut for [T] {
 impl<T> ManuallyDropMut for T {
     type Ret = ManuallyDrop<T>;
 
+    #[inline]
     fn manually_drop_mut<'__> (self: &'__ mut T)
       -> &'__ mut ManuallyDrop<T>
     {

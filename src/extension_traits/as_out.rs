@@ -41,6 +41,7 @@ use crate::extension_traits::ManuallyDropMut;
 /// ```
 pub
 trait AsOut<Pointee : ?Sized> {
+    #[allow(missing_docs)]
     fn as_out<'out> (self: &'out mut Self)
       -> Out<'out, Pointee>
     ;

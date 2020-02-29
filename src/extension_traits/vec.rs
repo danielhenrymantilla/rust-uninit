@@ -1,8 +1,10 @@
+cfg_std! {
 use crate::*;
 use ::core::slice;
 
 /// Extension trait for [`Vec`], allowing a non-`unsafe` API to interact
 /// with the backing buffer / allocation.
+#[allow(missing_docs)]
 pub
 trait VecCapacity : Sealed {
     type Item;
@@ -23,10 +25,10 @@ trait VecCapacity : Sealed {
     where
         Self::Item : Copy, // Opinionated stance against accidental memory leaks
     ;
-    fn get_backing_buffer_manually_drop (self: &'_ mut Self)
+    fn get_backing_buffer_with_leaking_writes (self: &'_ mut Self)
       -> Out<'_, [Self::Item]>
     ;
-    fn into_backing_buffer_manually_drop (self: Self)
+    fn into_backing_buffer_forget_elems (self: Self)
       -> Box<[MaybeUninit<Self::Item>]>
     ;
 }
@@ -35,6 +37,7 @@ mod private { pub trait Sealed : Sized {} } use private::Sealed;
 
 impl<T> Sealed for Vec<T> {}
 impl<T> VecCapacity for Vec<T> {
+    #[allow(missing_docs)]
     type Item = T;
 
     /// Splits the `Vec<T>`'s
@@ -43,10 +46,9 @@ impl<T> VecCapacity for Vec<T> {
     ///
     /// Imagine this as doing
     /// `self.get_backing_buffer().split_at_out(self.len())`
-    /// while upgrading the first half to `&mut [T]` and the second half to a
-    /// `&mut [MaybeUninit<T>]`.
+    /// while upgrading the first half to `&mut [T]`.
     ///
-    /// # Guarantees (that `unsafe` code may rely on):
+    /// # Guarantees (that `unsafe` code may rely on)
     ///
     /// Given a vector `v`, and `let (xs, extra) = v.split_at_extra_cap()`,
     /// then:
@@ -64,17 +66,21 @@ impl<T> VecCapacity for Vec<T> {
     ///         **`extra.len() ≥ n`**.
     ///
     ///         For the `extra.len() == n` equality to hold, one must subslice
-    ///         `extra`: `extra = &mut extra[.. n];`.
+    ///         `extra`:
+    ///
+    ///           - `extra = extra.get_out(.. n).unwrap();`.
+    ///
     ///         And given the aformentioned guarantees, one can even:
-    ///         `extra = extra.get_mut_unchecked(.. n);`
+    ///
+    ///           - `extra = extra.get_unchecked_out(.. n);`
     ///
     ///         This last idiom is covered by
     ///         [`.reserve_uninit(n)`][`VecCapacity::reserve_uninit`].
     ///
-    ///   - `extra.as_ptr().cast() == v.as_ptr().add(v.len())`.
+    ///   - `extra.as_ptr() == v.as_ptr().add(v.len())`.
     ///
-    ///   - Thus, (only) after initializing the first `k` elements of `extra`,
-    ///     it is sound to `v.set_len(v.len() + k);`.
+    ///   - Thus, only after initializing the first `k` elements of `extra`,
+    ///     is it sound to `v.set_len(v.len() + k);`.
     ///
     /// # Example
     ///
@@ -106,7 +112,7 @@ impl<T> VecCapacity for Vec<T> {
       -> (&'_ mut [T], Out<'_, [T]>)
     {
         let len = self.len();
-        let backing_buffer = self.get_backing_buffer_manually_drop();
+        let backing_buffer = self.get_backing_buffer_with_leaking_writes();
         let (mut xs, extra) = backing_buffer.split_at_out(len);
         (
             unsafe {
@@ -161,7 +167,7 @@ impl<T> VecCapacity for Vec<T> {
         unsafe {
             // Safety: `Vec<T>` guarantees that `cap >= len + additional` and
             // thus that `cap - len >= additional`.
-            extra.get_out_unchecked(.. additional)
+            extra.get_unchecked_out(.. additional)
         }
     }
 
@@ -173,7 +179,7 @@ impl<T> VecCapacity for Vec<T> {
     where
         T : Copy, // Opinionated stance against accidental memory leaks
     {
-        self.get_backing_buffer_manually_drop()
+        self.get_backing_buffer_with_leaking_writes()
     }
 
     /// Same as [`.get_backing_buffer()`][`VecCapacity::get_backing_buffer`]
@@ -190,13 +196,21 @@ impl<T> VecCapacity for Vec<T> {
     ///
     /// ```rust
     /// use ::uninit::prelude::*;
+    /// use ::std::rc::Rc;
     ///
-    /// let mut v = vec![Some(Box::new(42))];
-    /// v   .get_backing_buffer_manually_drop()
+    /// let rc = Rc::new(());
+    /// assert_eq!(Rc::strong_count(&rc), 1);
+    /// let mut v = vec![ Some(Rc::clone(&rc)) ];
+    /// assert_eq!(Rc::strong_count(&rc), 2);
+    /// // This overwrites the `rc` clone  without running any destructor
+    /// // whatsoever, hence leaking it.
+    /// v   .get_backing_buffer_with_leaking_writes()
     ///     .get_out(0)
     ///     .unwrap()
-    ///     .write(None) // the box is not freed despite now being unreachable.
+    ///     .write(None) // the `rc` clone is not freed
     /// ;
+    /// assert_eq!(Rc::strong_count(&rc), 2);
+    /// assert!(Rc::try_unwrap(rc).is_err());
     /// ```
     ///
     /// # Example
@@ -206,7 +220,7 @@ impl<T> VecCapacity for Vec<T> {
     /// use ::std::cell::Cell;
     ///
     /// let mut v = vec![Cell::new(0)];
-    /// v   .get_backing_buffer_manually_drop() // No drop glue, so this is fine
+    /// v   .get_backing_buffer_with_leaking_writes() // No drop glue, so this is fine
     ///     .get_out(0)
     ///     .unwrap()
     ///     .write(Cell::new(42))
@@ -214,7 +228,7 @@ impl<T> VecCapacity for Vec<T> {
     /// assert_eq!(v[0].get(), 42);
     /// ```
     #[inline]
-    fn get_backing_buffer_manually_drop (self: &'_ mut Vec<T>)
+    fn get_backing_buffer_with_leaking_writes (self: &'_ mut Vec<T>)
       -> Out<'_, [T]>
     {
         let capacity = self.capacity();
@@ -238,7 +252,7 @@ impl<T> VecCapacity for Vec<T> {
     where
         T : Copy, // Opinionated stance against accidental memory leaks
     {
-        self.into_backing_buffer_manually_drop()
+        self.into_backing_buffer_forget_elems()
     }
 
     /// Same as [`.into_backing_buffer()`][
@@ -250,8 +264,45 @@ impl<T> VecCapacity for Vec<T> {
     /// longer knows which are).
     ///
     /// ⚠️ **Misusage of this function can thus lead to memory leaks** ⚠️
+    ///
+    /// # Counter-example
+    ///
+    /// ```rust
+    /// use ::uninit::prelude::*;
+    /// use ::std::rc::Rc;
+    ///
+    /// let rc = Rc::new(());
+    /// assert_eq!(Rc::strong_count(&rc), 1);
+    /// let mut v = vec![ Some(Rc::clone(&rc)) ];
+    /// assert_eq!(Rc::strong_count(&rc), 2);
+    /// // This leaks the `rc` clone (but not the heap-allocated array containing it)
+    /// let _ = v.into_backing_buffer_forget_elems();
+    /// assert_eq!(Rc::strong_count(&rc), 2);
+    /// assert!(Rc::try_unwrap(rc).is_err());
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ::uninit::prelude::*;
+    ///
+    /// let mut v = vec![String::from("Hello!")];
+    /// // Good practice: before calling `.into_backing_buffer_forget_elems()`
+    /// // one ought to `.clear()` the `Vec`:
+    /// v.clear(); // drops `"Hello!"`
+    /// let mut strings_buffer: Box<[MaybeUninit<String>]> =
+    ///     v.into_backing_buffer_forget_elems()
+    /// ;
+    /// strings_buffer[0] = MaybeUninit::new(String::from("Greetings!"));
+    /// let strings_buffer: Box<[String]> = unsafe {
+    ///     Box::assume_init(strings_buffer)
+    /// };
+    /// assert_eq!(&*strings_buffer[0], "Greetings!");
+    /// // This does free the contained "Greetings!" `String`.
+    /// drop(strings_buffer);
+    /// ```
     #[inline]
-    fn into_backing_buffer_manually_drop (self: Vec<T>)
+    fn into_backing_buffer_forget_elems (self: Vec<T>)
       -> Box<[MaybeUninit<T>]>
     {
         // We need to go through an intermediate max-capacity `Vec` because
@@ -281,7 +332,7 @@ impl<T> VecCapacity for Vec<T> {
 /// bytes, obtained when reading from `R`.
 ///
 /// This guarantees that the allocated memory starts uninitialized (before
-/// being initialized when read), for maximum performance.
+/// being initialized by the read), for maximum performance.
 ///
 /// # Example
 ///
@@ -290,33 +341,48 @@ impl<T> VecCapacity for Vec<T> {
 ///
 /// let mut reader = &b"World!"[..];
 /// let mut vec = b"Greetings, ".to_vec();
-/// vec.extend_from_reader(6, &mut reader).unwrap();
+/// vec.extend_from_reader_exact(6, &mut reader).unwrap();
 /// assert_eq!(
 ///     vec,
 ///     b"Greetings, World!",
 /// );
 /// ```
 pub
-trait VecExtendFromReader<R : ReadIntoUninit> {
-    fn extend_from_reader (
+trait VecExtendFromReader {
+    /// Tries to extends the `Vec` with up to `max_count` bytes read from
+    /// `reader`.
+    fn extend_from_reader<R : ReadIntoUninit> (
         self: &'_ mut Self,
-        count: usize,
+        max_count: usize,
+        reader: R,
+    ) -> io::Result<usize>
+    ;
+    /// Tries to extends the `Vec` with exactly `exact_count` bytes read from
+    /// `reader`.
+    fn extend_from_reader_exact<R : ReadIntoUninit> (
+        self: &'_ mut Self,
+        exact_count: usize,
         reader: R,
     ) -> io::Result<()>
     ;
 }
 
-impl<R : ReadIntoUninit> VecExtendFromReader<R> for Vec<u8> {
+macro_rules! make_extend {(
+    name = $fname:ident,
+    count_name = $count_param:ident,
+    read_into_buf = |$reader:ident, $buf:ident| $read_into_buf:expr,
+    ret_of_count = |$count:ident| -> $Ret:ty { $ret_of_count:expr },
+) => (
     #[inline]
-    fn extend_from_reader (
+    fn $fname<R : ReadIntoUninit> (
         self: &'_ mut Self,
-        count: usize,
-        mut reader: R,
-    ) -> io::Result<()>
+        $count_param: usize,
+        mut $reader: R,
+    ) -> io::Result<$Ret>
     {
-        let buf: Out<'_, [u8]> = self.reserve_uninit(count);
-        let buf: &mut [u8] = reader.read_into_uninit_exact(buf)?;
-        let count: usize = buf.len();
+        let $buf: Out<'_, [u8]> = self.reserve_uninit($count_param);
+        let buf: &mut [u8] = $read_into_buf?;
+        let $count: usize = buf.len();
         debug_assert_eq!(
             buf.as_mut_ptr(),
             self.as_mut_ptr()
@@ -324,7 +390,7 @@ impl<R : ReadIntoUninit> VecExtendFromReader<R> for Vec<u8> {
             ,
             "This is a bug and a soundness issue. Please submit an issue ASAP",
         );
-        let new_len = self.len().checked_add(count);
+        let new_len = self.len().checked_add($count);
         debug_assert!(
             new_len
                 .map(|new_len| new_len <= self.capacity())
@@ -341,6 +407,23 @@ impl<R : ReadIntoUninit> VecExtendFromReader<R> for Vec<u8> {
                 new_len.unwrap_or_else(|| hint::unreachable_unchecked())
             );
         }
-        Ok(())
+        Ok($ret_of_count)
+    }
+)}
+
+impl VecExtendFromReader for Vec<u8> {
+    make_extend! {
+        name = extend_from_reader,
+        count_name = max_count,
+        read_into_buf = |reader, buf| reader.read_into_uninit(buf),
+        ret_of_count = |count| -> usize { count },
+    }
+    make_extend! {
+        name = extend_from_reader_exact,
+        count_name = exact_count,
+        read_into_buf = |reader, buf| reader.read_into_uninit_exact(buf),
+        ret_of_count = |count| -> () { () },
     }
 }
+
+} // cfg_std!

@@ -1,5 +1,5 @@
 [lib]
-crate-type = ["rlib", "cdylib"]
+crate-type = ["rlib"]
 
 [package]
 name = "uninit"
@@ -21,12 +21,13 @@ license = "MIT"
 require_unsafe_in_body = "0.2.0"
 
 [features]
+std = []
 nightly = []
 specialization = ["nightly"]
 const_generics = ["nightly"]
 chain = []
 
-default = []
+default = ["std"]
 
 [package.metadata.docs.rs]
 features = [ "nightly" ]

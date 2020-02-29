@@ -1,3 +1,5 @@
+//! Read into uninitialized bytes logic.
+
 use_prelude!();
 
 use ::std::io::Read;
@@ -88,6 +90,7 @@ trait ReadIntoUninit : Read {
         })
     }
 
+    /// Chains / concats two `ReadIntoUninit` readers into one.
     #[cfg(feature = "chain")]
     fn chain<R : ReadIntoUninit> (
         self: Self,
@@ -128,14 +131,16 @@ macro_rules! auto_impl {(
 #[doc(cfg(feature = "specialization"))]
 default
 unsafe impl<R : Read> ReadIntoUninit for R {
+    #[inline]
     default
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
         buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
-        let buf = buf.fill_with(|_| 0);
-        self.read(buf).map(move |n| &mut buf[.. n])
+        let buf = buf.init_with(::core::iter::repeat(0));
+        self.read(buf)
+            .map(move |n| &mut buf[.. n])
     }
 
     #[inline]
@@ -145,8 +150,9 @@ unsafe impl<R : Read> ReadIntoUninit for R {
         buf: Out<'buf, [u8]>,
     ) -> io::Result<&'buf mut [u8]>
     {
-        let buf = buf.fill_with(|_| 0);
-        self.read_exact(buf).map(|()| buf)
+        let buf = buf.init_with(::core::iter::repeat(0));
+        self.read_exact(buf)
+            .map(|()| buf)
     }
 }
 

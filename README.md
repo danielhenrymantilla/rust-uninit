@@ -208,9 +208,9 @@ So, the objective of this crate is double:
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
 [`MaybeUninit`]: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html
-[`.assume_init_by_ref()`]: `crate::extension_traits::MaybeUninitExt::assume_init_by_ref`
-[`.assume_init_by_mut()`]: `crate::extension_traits::MaybeUninitExt::assume_init_by_mut`
-[`uninit_array!`]: `uninit_array`
-[`Vec::reserve_uninit`]: `crate::extension_traits::VecCapacity::reserve_uninit`
-[Initialize an uninitialized buffer with `.copy_from_slice()`]: `crate::out_ref::Out::copy_from_slice`
-[`ReadIntoUninit`]: `crate::read::ReadIntoUninit`
+[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
+[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
+[`uninit_array!`]: https://docs.rs/uninit/0.2.0/uninit/macro.uninit_byte_array.html
+[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
+[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.0/uninit/out_ref/struct.Out.html#method.copy_from_slice
+[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.0/uninit/read/trait.ReadIntoUninit.html

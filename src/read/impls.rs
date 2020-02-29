@@ -24,6 +24,7 @@ impl<R : ReadIntoUninit + ?Sized> ReadIntoUninit for &'_ mut R {
 //   - `read_into_uninit_exact` is not overriden
 unsafe
 impl ReadIntoUninit for &'_ [u8] {
+    #[inline]
     fn read_into_uninit<'buf> (
         self: &'_ mut Self,
         buf: Out<'buf, [u8]>,
