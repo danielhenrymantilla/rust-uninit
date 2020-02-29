@@ -1,0 +1,2 @@
+[build]
+rustdocflags = ["-C", "opt-level=2"]

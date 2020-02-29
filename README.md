@@ -51,6 +51,16 @@ Note that there are other ways to trigger this UB without explicitely using
     ```
 
       - this is exactly equivalent to calling `mem::uninitialized::<T>()`,
+        which breaks the _validity_ invariant of `T` and thus causes
+        "instant UB".
+
+        There currently only two exceptions / _valid_ use cases:
+
+          - either [`type T = [MaybeUninit<U>; N]`][`uninit_array`],
+
+          - or `T` is an inhabited ZST (this may, however, break safety
+            invariants associated with the properties of the type, causing UB
+            once such broken invariant is witnessed).
 
       - yes, using [`MaybeUninit`] is more subtle than just changing a function
         call.
@@ -58,8 +68,11 @@ Note that there are other ways to trigger this UB without explicitely using
   - ```rust
     let mut vec: Vec<u8> = Vec::with_capacity(100); // Fine
     unsafe {
-        vec.set_len(100); // UB: we have an uninitialized [u8; 100] in the heap
+        vec.set_len(100); // we have an uninitialized [u8; 100] in the heap
+        // This has broken the _safety_ invariant of `Vec`, but is not yet UB
+        // since no code has witnessed the broken state
     }
+    let heap_bytes: &[u8] = &*vec; // Witness the broken safety invariant: UB!
     ```
 
 ## Instead, (you can) use [`MaybeUninit`]
@@ -98,6 +111,7 @@ It is all about the _**delayed** initialization pattern_:
         let mut x = MaybeUninit::<i32>::uninit();
 
         x = MaybeUninit::new(42);
+        assert_eq!(42, unsafe { x.assume_init() });
         ```
 
       - or through a raw `*mut T` pointer (contrary to Rust references,
@@ -110,7 +124,22 @@ It is all about the _**delayed** initialization pattern_:
 
         unsafe {
             x.as_mut_ptr().write(42);
+            assert_eq!(x.assume_init(), 42);
         }
+        ```
+
+      - or, if you use the tools of this crate, by upgrading the
+        `&mut MaybeUninit<T>` into a "`&out T`" type called
+        [`Out<T>`][`crate::prelude::Out`]:
+
+        ```rust
+        #![forbid(unsafe_code)] // no unsafe!
+        use ::core::mem::MaybeUninit;
+        use ::uninit::prelude::*;
+
+        let mut x = MaybeUninit::uninit();
+        let at_init_x: &i32 = x.as_out().write(42);
+        assert_eq!(at_init_x, &42);
         ```
 
  3. **Type-level upgrade**
@@ -151,9 +180,9 @@ pub trait Read {
 }
 ```
 
-that is, there is no way to `.read()` into an unitialized buffer (it would
+that is, there is no way to `.read()` into an uninitialized buffer (it would
 require an api taking either a `(*mut u8, usize)` pair, or, equivalently and
-by the way more ergonomically, a `&mut [MaybeUninit<u8>]`).
+by the way more ergonomically, a [`&out [u8]`][`crate::prelude::Out`]).
 
 # Enter `::uninit`
 
@@ -163,7 +192,7 @@ So, the objective of this crate is double:
 
     For instance:
 
-      - [`uninit_byte_array!`]
+      - [`uninit_array!`]
 
       - [`Vec::reserve_uninit`]
 
@@ -174,19 +203,14 @@ So, the objective of this crate is double:
 
       - [`ReadIntoUninit`]
 
-      - [`.init_with_copy_from_slice()`]
-
-## Status
-
-This is currently at an realy stage, so it "only" includes
-utilities to work with **uninitialized bytes** or integers.
+      - [Initialize an uninitialized buffer with `.copy_from_slice()`]
 
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
 [`MaybeUninit`]: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html
-[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.1.0/uninit/trait.MaybeUninitExt.html#method.assume_init_by_ref
-[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.1.0/uninit/trait.MaybeUninitExt.html#method.assume_init_by_mut
-[`uninit_byte_array!`]: https://docs.rs/uninit/0.1.0/uninit/macro.uninit_byte_array.html
-[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.1.0/uninit/trait.VecReserveUninit.html#tymethod.reserve_uninit
-[`.init_with_copy_from_slice()`]: https://docs.rs/uninit/0.1.0/uninit/trait.InitWithCopyFromSlice.html#tymethod.init_with_copy_from_slice
-[`ReadIntoUninit`]: https://docs.rs/uninit/0.1.0/uninit/trait.ReadIntoUninit.html
+[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
+[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
+[`uninit_array!`]: https://docs.rs/uninit/0.2.0/uninit/macro.uninit_byte_array.html
+[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.0/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
+[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.0/uninit/out_ref/struct.Out.html#method.copy_from_slice
+[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.0/uninit/read/trait.ReadIntoUninit.html
