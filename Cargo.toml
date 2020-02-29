@@ -3,7 +3,7 @@ crate-type = ["rlib"]
 
 [package]
 name = "uninit"
-version = "0.1.0"
+version = "0.2.0-alpha"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
@@ -18,7 +18,6 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-require_unsafe_in_body = "0.2.0"
 
 [features]
 std = []

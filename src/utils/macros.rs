@@ -16,6 +16,7 @@ macro_rules! pub_in_crate {(
 )}
 
 macro_rules! use_prelude {() => (
+    #[allow(unused_imports)]
     pub(in crate) use crate::utils::prelude::*;
 )}
 

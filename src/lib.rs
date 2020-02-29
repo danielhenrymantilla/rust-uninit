@@ -21,9 +21,6 @@
 )]
 
 #[macro_use]
-extern crate require_unsafe_in_body;
-
-#[macro_use]
 mod utils;
 pub mod prelude {
     //! Reexports of pervasive items.

@@ -75,7 +75,7 @@ trait MaybeUninitExt {
     ;
 }
 
-#[require_unsafe_in_bodies]
+#[allow(unused_unsafe)]
 impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     type T = T;
 
@@ -118,7 +118,7 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     }
 }
 
-#[require_unsafe_in_bodies]
+#[allow(unused_unsafe)]
 impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
     type T = [T];
 
