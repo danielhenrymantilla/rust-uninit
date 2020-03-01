@@ -3,12 +3,13 @@ crate-type = ["rlib"]
 
 [package]
 name = "uninit"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
 documentation = "https://docs.rs/uninit"
 homepage = "https://crates.io/crates/uninit"
+repository = "https://github.com/danielhenrymantilla/rust-uninit"
 
 description = "A collection of tools for a safer usage of uninitialized memory"
 keywords = ["uninit", "sound", "unsafe", "read", "MaybeUninit"]

@@ -56,7 +56,7 @@ Note that there are other ways to trigger this UB without explicitely using
 
         There currently only two exceptions / _valid_ use cases:
 
-          - either [`type T = [MaybeUninit<U>; N]`][`uninit_array`],
+          - either [`type T = [MaybeUninit<U>; N]`][`uninit_array!`],
 
           - or `T` is an inhabited ZST (this may, however, break safety
             invariants associated with the properties of the type, causing UB
@@ -130,7 +130,7 @@ It is all about the _**delayed** initialization pattern_:
 
       - or, if you use the tools of this crate, by upgrading the
         `&mut MaybeUninit<T>` into a "`&out T`" type called
-        [`Out<T>`][`crate::prelude::Out`]:
+        [`Out`]`<T>`:
 
         ```rust
         #![forbid(unsafe_code)] // no unsafe!
@@ -217,9 +217,10 @@ uninit = { version = "x.y.z", default-features = false }
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
 [`MaybeUninit`]: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html
-[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
-[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
-[`uninit_array!`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/macro.uninit_byte_array.html
-[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
-[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/out_ref/struct.Out.html#method.copy_from_slice
-[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.0-alpha-2/uninit/read/trait.ReadIntoUninit.html
+[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
+[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
+[`uninit_array!`]: https://docs.rs/uninit/0.2.1/uninit/macro.uninit_byte_array.html
+[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
+[`Out`]: https://docs.rs/uninit/0.2.1/uninit/out_ref/struct.Out.html
+[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.1/uninit/out_ref/struct.Out.html#method.copy_from_slice
+[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.1/uninit/read/trait.ReadIntoUninit.html
