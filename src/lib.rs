@@ -62,6 +62,10 @@ mod out_ref;
 #[doc(hidden)]
 pub use ::core;
 
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub use ::std;
+
 /// Sets up an inline / stack-allocated array of
 /// [uninitialized][`MaybeUninit`] elements.
 ///

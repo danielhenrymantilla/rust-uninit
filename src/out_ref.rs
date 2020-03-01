@@ -1,7 +1,7 @@
 //! `&out _` references in stable Rust!
 
 use crate::{
-    extension_traits::MaybeUninitExt,
+    extension_traits::{AsOut, MaybeUninitExt},
 };
 use ::core::{
     mem::{self,
@@ -233,6 +233,24 @@ impl<'out, T : 'out> Out<'out, T> {
     /// [`MaybeUninit::assume_init`] for more info about it. Thus:
     ///
     ///   - The pointee must have been initialized.
+    ///
+    /// This is a **validity invariant**, meaning that UB does happen from just
+    /// calling that function to produce an ill-formed reference, even if the
+    /// obtained reference is "never actually used".
+    ///
+    /// ## Counterexample
+    ///
+    /// The following program exhibits Undefined Behavior:
+    ///
+    /// ```rust,no_run
+    /// use ::uninit::prelude::*;
+    ///
+    /// let mut x = MaybeUninit::uninit();
+    /// let _unused: &mut u8 = unsafe {
+    ///     x   .as_out()
+    ///         .assume_init() // UB!
+    /// };
+    /// ```
     #[inline]
     pub
     unsafe
@@ -255,6 +273,15 @@ impl<'out, T : 'out> Out<'out, T> {
     ///   - Exception: if the given `&out` reference has originated from a
     ///     `&mut MaybeUninit<_>`, then calling `.as_mut_uninit()` is a sound
     ///     way to make the trip back.
+    ///
+    /// This is a **safety invariant** (_i.e._, even if it is never "instant"
+    /// UB to produce such a value, it does break the safety invariant of
+    /// `&mut MaybeUninit<_>` (that of being allowed to write
+    /// `MaybeUninit::uninit()` garbage into the pointee), so UB can happen
+    /// afterwards). This is different than `.assume_init()` soundness relying
+    /// on a validity invariant, meaning that UB does happen from just calling
+    /// that function to produce an ill-formed reference, even if the obtained
+    /// reference is never actually used.
     ///
     /// # Counter-example
     ///
@@ -371,12 +398,28 @@ impl<'out, T : 'out> From<&'out mut [MaybeUninit<T>]> for Out<'out, [T]> {
 }
 
 impl<'out, T : 'out> Out<'out, [T]> {
+    /// Converts a single item out reference into a `1`-long out slice.
+    ///
+    /// This is the `&out` version of
+    /// [`slice::from_ref`] and [`slice::from_mut`].
+    #[inline]
+    pub
+    fn from_out (out: Out<'out, T>)
+      -> Out<'out, [T]>
+    {
+        unsafe {
+            slice::from_mut(out.as_mut_uninit())
+                .as_out()
+        }
+    }
+
     /// Obtains a read-only non-NULL and well-aligned raw pointer to a
     /// potentially uninitialized `T`.
     ///
     /// Unless maybe with interior mutability through raw pointers, there is
     /// no case where using this function is more useful than going through
-    /// [`<[MaybeUninit<_>]>::assume_init_ref()`][`MaybeUninitExt::assume_init_by_ref`].
+    /// [`<[MaybeUninit<_>]>::assume_init_by_ref()`][
+    /// `MaybeUninitExt::assume_init_by_ref`].
     ///
     /// Worse, the lack of `unsafe`-ty of the method (ignoring the one needed
     /// to use the pointer) and its "boring" name may lead to code
@@ -545,6 +588,83 @@ impl<'out, T : 'out> Out<'out, [T]> {
             })
     }
 
+    /// Downgrades the `Out<'_, [T]>` slice into a `&'_ [MaybeUninit<T>]`.
+    ///
+    /// This leads to a read-only<sup>1</sup> "unreadable" slice which is thus
+    /// only useful for accessing `&'_ []` metadata, mainly the length of the
+    /// slice.
+    ///
+    /// In practice, calling this function explicitely is not even needed given
+    /// that `Out<'_, [T]> : Deref<Target = [MaybeUninit<T>]`, so one can do:
+    ///
+    /// ```rust
+    /// use ::uninit::prelude::*;
+    ///
+    /// let mut backing_array = uninit_array![_; 42];
+    /// let buf: Out<'_, [u8]> = backing_array.as_out();
+    /// assert_eq!(buf.len(), 42); // no need to `.r().as_uninit()`
+    /// ```
+    ///
+    /// <sup>1</sup> <small>Unless Interior Mutability is involved;
+    /// speaking of which:</small>
+    ///
+    /// # Interior Mutability
+    ///
+    /// The whole design of `Out` references is to forbid any non-unsafe API
+    /// that would allow writing `MaybeUninit::uninit()` garbage into the
+    /// pointee. So, for instance, this crate does not offer any API like:
+    ///
+    /// ```rust
+    /// use ::core::{cell::Cell, mem::MaybeUninit};
+    ///
+    /// // /!\ This is UNSOUND when combined with the `::uninit` crate!
+    /// fn swap_mb_uninit_and_cell<T> (
+    ///     p: &'_ MaybeUninit<Cell<T>>,
+    /// ) -> &'_ Cell<MaybeUninit<T>>
+    /// {
+    ///     unsafe {
+    ///         // Safety: both `Cell` and `MaybeUninit` are `#[repr(transparent)]`
+    ///         ::core::mem::transmute(p)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Indeed, if both such non-`unsafe` API and the `uninit` crate were
+    /// present, then one could trigger UB with:
+    ///
+    /// ```rust,ignore
+    /// let mut x = [Cell::new(42)];
+    /// let at_mb_uninit_cell: &'_ MaybeUninit<Cell<u8>> =
+    ///     &x.as_out().as_uninit()[0]
+    /// ;
+    /// swap_mb_uninit_and_cell(at_mb_uninit_cell)
+    ///     .set(MaybeUninit::uninit()) // UB!
+    /// ;
+    /// ```
+    ///
+    /// The author of the crate believes that such UB is the responsibility of
+    /// the one who defined `swap_mb_uninit_and_cell`, and that in general that
+    /// function is unsound: **`MaybeUninit`-ness and interior mutability do
+    /// not commute!**
+    ///
+    ///   - the `Safety` annotation in the given example only justifies that
+    ///     it is not breaking any layout-based validity invariants,
+    ///     but it is actually impossible to semantically prove that it is safe
+    ///     for these properties to commute.
+    ///
+    /// If you are strongly convinced of the opposite, please file an issue (if
+    /// there isn't already one: since this question is not that clear the
+    /// author is very likely to create an issue themself).
+    #[inline]
+    pub
+    fn as_uninit (self: Out<'out, [T]>)
+      -> &'out [MaybeUninit<T>]
+    {
+        unsafe {
+            // Safety: `swap_mb_uninit_and_cell` is the one considered unsound.
+            &*(self.0.as_ptr() as *const [MaybeUninit<T>])
+        }
+    }
 
     /// Upgrades the `&out [_]` (write-only) reference to a read-writeable
     /// `&mut [_]`.
@@ -557,10 +677,14 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// [`MaybeUninit::assume_init`] for more info about it. Thus:
     ///
     ///   - The pointee(s) must have been initialized.
+    ///
+    /// This is a **validity invariant**, meaning that UB does happen from just
+    /// calling that function to produce an ill-formed reference, even if the
+    /// obtained reference is "never actually used".
     #[inline]
     pub
     unsafe
-    fn assume_init (mut self: Out<'out, [T]>) -> &'out mut [T]
+    fn assume_all_init (mut self: Out<'out, [T]>) -> &'out mut [T]
     {
         let len = self.len();
         slice::from_raw_parts_mut(
@@ -634,7 +758,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
                     <[MaybeUninit<T>]>::from_ref(source_slice)
                 )
             ;
-            self.assume_init()
+            self.assume_all_init()
         }
     }
 
@@ -666,7 +790,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
         unsafe {
             // Safety: `init_count` values of the buffer have been initialized
             self.get_unchecked_out(.. init_count)
-                .assume_init()
+                .assume_all_init()
         }
     }
 
@@ -691,7 +815,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
       -> (Out<'out, [T]>, Out<'out, [T]> )
     {
         let (left, right) = unsafe { self.as_mut_uninit() }.split_at_mut(idx);
-        (left.into(), right.into())
+        (left.as_out(), right.as_out())
     }
 }
 
@@ -705,6 +829,7 @@ impl<'out, T : 'out> ::core::ops::Deref for Out<'out, [T]> {
       -> &'_ [MaybeUninit<T>]
     {
         unsafe {
+            // Safety: see `fn as_uninit`.
             &*(self.0.as_ptr() as *const [MaybeUninit<T>])
         }
     }

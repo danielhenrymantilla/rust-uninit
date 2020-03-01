@@ -1,5 +1,34 @@
 use super::*;
 
+#[cfg(feature = "specialization")]
+#[doc(cfg(feature = "specialization"))]
+default
+unsafe impl<R : Read> ReadIntoUninit for R {
+    #[inline]
+    default
+    fn read_into_uninit<'buf> (
+        self: &'_ mut Self,
+        buf: Out<'buf, [u8]>,
+    ) -> io::Result<&'buf mut [u8]>
+    {
+        let buf = buf.init_with(::core::iter::repeat(0));
+        self.read(buf)
+            .map(move |n| &mut buf[.. n])
+    }
+
+    #[inline]
+    default
+    fn read_into_uninit_exact<'buf> (
+        self: &'_ mut Self,
+        buf: Out<'buf, [u8]>,
+    ) -> io::Result<&'buf mut [u8]>
+    {
+        let buf = buf.init_with(::core::iter::repeat(0));
+        self.read_exact(buf)
+            .map(|()| buf)
+    }
+}
+
 // # Safety:
 //
 //   - basic delegation

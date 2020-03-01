@@ -8,32 +8,87 @@ use ::std::io::Read;
 /// type that can output the bytes read into
 /// [uninitialised memory][`MaybeUninit`].
 ///
-/// # Safety
+/// # Safety (to implement) / Guarantees (for users of `impl ReadIntoUninit` types)
 ///
-/// The trait is marked `unsafe` because it **needs to guarantee** that:
+/// The trait is `unsafe` (to implement) because it **needs to guarantee** to
+/// users of generic `R : ReadIntoUninit` code (that may use `unsafe` code
+/// relying on it!) that:
 ///
-///   - `if let Ok(init_buf) = self.read_into_uninit(buf)`, then
-///     `init_buf` is a prefix slice of `buf`.
+///   - `if let Ok(init_buf) = self.read_into_uninit(buf)`, then it must be
+///     sound to:
 ///
-///       - this property is equivalent to:
+///     ```rust
+///     # macro_rules! ignore {($($t:tt)*) => ()} ignore! {
+///     unsafe {
+///         buf.get_out_unchecked(.. init_buf.len()).assume_init()
+///     }
+///     # }
+///     ```
 ///
-///         `init_buf.as_mut_ptr() == buf.as_mut_ptr() as *mut u8` and
-///         `init_buf.len() <= buf.len()`
+///   - `if self.read_into_uninit_exact(buf).is_ok()`, then it must be
+///     sound to: `buf.assume_init()`.
 ///
-///       - as well as:
+/// # Counterexample
 ///
-///         **`buf[.. init_buf.len()]` is sound to `assume_init`**
+/// ```rust,no_run
+/// use ::uninit::{prelude::*,
+///     read::{auto_impl, ReadIntoUninit},
+/// };
 ///
-/// `unsafe` code can assume this property to skip checks or manual
-/// initialization, and that's why incorrectly `impl`-ementing this marker
-/// trait can compromise memory safety.
+/// pub
+/// struct Evil;
+///
+/// auto_impl! { #[derived_from(ReadIntoUninit)] impl Read for Evil }
+/// unsafe // unsound!
+/// impl ReadIntoUninit for Evil {
+///     fn read_into_uninit<'buf> (
+///         self: &'_ mut Self,
+///         buf: Out<'buf, [u8]>,
+///     ) -> ::std::io::Result<&'buf mut [u8]>
+///     {
+///         Ok(Box::leak(vec![0; buf.len()].into_boxed_slice()))
+///     }
+/// }
+/// ```
+///
+/// Indeed, with such an impl, the following function could cause UB, when
+/// instanced with `R = Evil`:
+///
+/// ```rust
+/// use ::uninit::{prelude::*, read::ReadIntoUninit};
+///
+/// fn read_byte<R> (reader: &'_ mut R)
+///   -> ::std::io::Result<u8>
+/// where
+///     R : ReadIntoUninit,
+/// {
+///     let mut byte = MaybeUninit::uninit();
+///     reader.read_into_uninit_exact(::std::slice::from_mut(&mut byte).as_out())?;
+///     Ok(unsafe {
+///         // Safety: Guaranteed by `ReadIntoUninit` contract
+///         byte.assume_init()
+///     })
+/// }
+/// ```
 pub
 unsafe // Safety: `.read_into_uninit_exact()` delegates to `.read_into_uninit()`.
 trait ReadIntoUninit : Read {
     /// Single attempt to read bytes from `Self` into `buf`.
     ///
     /// On success, it returns the bytes having been read.
-    /// **This returned slice is guaranteed to be a prefix slice of `buf`**.
+    ///
+    /// # Guarantees (that `unsafe` code may rely on)
+    ///
+    ///   - `if let Ok(init_buf) = self.read_into_uninit(buf)`, then it is
+    ///     sound to:
+    ///
+    ///     ```rust
+    ///     # macro_rules! ignore {($($t:tt)*) => ()} ignore! {
+    ///     unsafe {
+    ///         buf.get_out_unchecked(.. init_buf.len()).assume_init()
+    ///     }
+    ///     # }
+    ///     ```
     ///
     /// This is not guaranteed to read `buf.len()` bytes, see the docs of
     /// [`.read()`][`Read::read`] for more information.
@@ -46,7 +101,11 @@ trait ReadIntoUninit : Read {
     /// Attempts to _fill_ `buf` through multiple `.read()` calls if necessary.
     ///
     /// On success, it returns the bytes having been read.
-    /// **This returned slice is guaranteed to be `buf`**.
+    ///
+    /// # Guarantees (that `unsafe` code may rely on)
+    ///
+    ///   - `if self.read_into_uninit_exact(buf).is_ok()`, then it is
+    ///     sound to: `buf.assume_init()`.
     ///
     /// See the docs of [`.read_exact()`][`Read::read_exact`] for more
     /// information.
@@ -86,7 +145,7 @@ trait ReadIntoUninit : Read {
             //
             //   - this is the "concatenation" of all the "buf[.. n]"
             //     initialisation witnesses.
-            buf.assume_init()
+            buf.assume_all_init()
         })
     }
 
@@ -107,57 +166,63 @@ trait ReadIntoUninit : Read {
 
 }
 
-#[allow(unused_macros)]
-macro_rules! auto_impl {(
+#[macro_use] mod private {
+/// Helper crate to alleviate the code duplication from implementing both
+/// `Read` and `ReadIntoUninit`.
+///
+/// Once some type `T` implements `ReadIntoUninit`, you can derive `Read` by
+/// doing:
+///
+/// ```rust
+/// # macro_rules! ignore {($($t:tt)*) => ()} ignore! {
+/// ::uninit::read::auto_impl! {
+///     #[derived_from(ReadIntoUninit)]
+///     impl Read for X
+/// }
+/// // and if X is generic, over, for instance, `Generics`
+/// ::uninit::read::auto_impl! {
+///     #[derived_from(ReadIntoUninit)]
+///     impl[Generics] Read for X<Generics>
+/// }
+/// # }
+/// ```
+#[macro_export]
+macro_rules! __auto_impl__ {(
     #[derived_from(ReadIntoUninit)]
-    impl [$($generics:tt)*] io::Read for $T:ty
-    where
+    impl $( [$($generics:tt)*] )? Read for $T:ty
+    $(
+        where
         $($where_clause:tt)*
+    )?
 ) => (
-    impl<$($generics)*> io::Read for $T
+    impl$(<$($generics)*>)? $crate::std::io::Read for $T
     where
-        $($where_clause)*
+        $( $($where_clause)* )?
     {
         #[inline]
         fn read (self: &'_ mut Self, buf: &'_ mut [u8])
-          -> io::Result<usize>
+          -> $crate::std::io::Result<usize>
         {
-            <Self as ReadIntoUninit>::read_into_uninit(
+            <Self as $crate::read::ReadIntoUninit>::read_into_uninit(
                 self,
                 buf.as_out(),
             ).map(|x| x.len())
         }
+
+        #[inline]
+        fn read_exact (self: &'_ mut Self, buf: &'_ mut [u8])
+          -> $crate::std::io::Result<()>
+        {
+            <Self as $crate::read::ReadIntoUninit>::read_into_uninit_exact(
+                self,
+                buf.as_out(),
+            ).map(drop)
+        }
     }
 )}
-
-#[cfg(feature = "specialization")]
-#[doc(cfg(feature = "specialization"))]
-default
-unsafe impl<R : Read> ReadIntoUninit for R {
-    #[inline]
-    default
-    fn read_into_uninit<'buf> (
-        self: &'_ mut Self,
-        buf: Out<'buf, [u8]>,
-    ) -> io::Result<&'buf mut [u8]>
-    {
-        let buf = buf.init_with(::core::iter::repeat(0));
-        self.read(buf)
-            .map(move |n| &mut buf[.. n])
-    }
-
-    #[inline]
-    default
-    fn read_into_uninit_exact<'buf> (
-        self: &'_ mut Self,
-        buf: Out<'buf, [u8]>,
-    ) -> io::Result<&'buf mut [u8]>
-    {
-        let buf = buf.init_with(::core::iter::repeat(0));
-        self.read_exact(buf)
-            .map(|()| buf)
-    }
-}
+} // mod private
+#[doc(inline)]
+pub use __auto_impl__ as auto_impl;
 
 pub use crate::extension_traits::VecExtendFromReader;
 
@@ -239,7 +304,7 @@ mod chain {
                         // initialization of these bytes.
                         let len = buf_.len();
                         let buf = buf.get_out(.. len).unwrap();
-                        Ok(buf.assume_init())
+                        Ok(buf.assume_all_init())
                     };
                 }
             }
@@ -247,11 +312,11 @@ mod chain {
         }
     }
 
-    auto_impl!(
+    auto_impl! {
         #[derived_from(ReadIntoUninit)]
-        impl[R1, R2] io::Read for Chain<R1, R2>
+        impl[R1, R2] Read for Chain<R1, R2>
         where
             R1 : ReadIntoUninit,
             R2 : ReadIntoUninit,
-    );
+    }
 }

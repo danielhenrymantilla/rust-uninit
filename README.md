@@ -217,10 +217,10 @@ uninit = { version = "x.y.z", default-features = false }
 [`Read`]: https://doc.rust-lang.org/1.36.0/std/io/trait.Read.html
 [`mem::uninitialized`]: https://doc.rust-lang.org/core/mem/fn.uninitialized.html
 [`MaybeUninit`]: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html
-[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
-[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
-[`uninit_array!`]: https://docs.rs/uninit/0.2.1/uninit/macro.uninit_byte_array.html
-[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.1/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
-[`Out`]: https://docs.rs/uninit/0.2.1/uninit/out_ref/struct.Out.html
-[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.1/uninit/out_ref/struct.Out.html#method.copy_from_slice
-[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.1/uninit/read/trait.ReadIntoUninit.html
+[`.assume_init_by_ref()`]: https://docs.rs/uninit/0.2.2/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_ref
+[`.assume_init_by_mut()`]: https://docs.rs/uninit/0.2.2/uninit/extension_traits/trait.MaybeUninitExt.html#tymethod.assume_init_by_mut
+[`uninit_array!`]: https://docs.rs/uninit/0.2.2/uninit/macro.uninit_array.html
+[`Vec::reserve_uninit`]: https://docs.rs/uninit/0.2.2/uninit/extension_traits/trait.VecCapacity.html#tymethod.reserve_uninit
+[`Out`]: https://docs.rs/uninit/0.2.2/uninit/out_ref/struct.Out.html
+[Initialize an uninitialized buffer with `.copy_from_slice()`]: https://docs.rs/uninit/0.2.2/uninit/out_ref/struct.Out.html#method.copy_from_slice
+[`ReadIntoUninit`]: https://docs.rs/uninit/0.2.2/uninit/read/trait.ReadIntoUninit.html
