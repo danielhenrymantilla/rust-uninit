@@ -207,7 +207,7 @@ So, the objective of this crate is double:
 
 ### `#![no_std]` friendly
 
-Simply disable the default-enabled `"std"` feature:
+Simply disable the default-enabled `"std"` feature in your `Cargo.toml` file:
 
 ```toml
 [dependencies]

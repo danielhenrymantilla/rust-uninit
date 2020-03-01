@@ -5,7 +5,7 @@ use ::core::mem::ManuallyDrop;
 #[cfg(doc)]
 use crate::extension_traits::ManuallyDropMut;
 
-/// Extension trait to convert a `&mut _` into a `&out ` by calling
+/// Extension trait to convert a `&mut _` into a `&out _` by calling
 /// `.as_out()` on it.
 ///
 /// By autoref, this means that you can even just extract a `&out T` reference

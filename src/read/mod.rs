@@ -92,6 +92,9 @@ trait ReadIntoUninit : Read {
 
     /// Chains / concats two `ReadIntoUninit` readers into one.
     #[cfg(feature = "chain")]
+    #[cfg_attr(feature = "nightly",
+        doc(cfg(feature = "chain")),
+    )]
     fn chain<R : ReadIntoUninit> (
         self: Self,
         next: R,
@@ -161,9 +164,17 @@ pub use crate::extension_traits::VecExtendFromReader;
 mod impls;
 
 #[cfg(feature = "chain")]
+#[cfg_attr(feature = "nightly",
+    doc(cfg(feature = "chain")),
+)]
+pub
 mod chain {
+    #![allow(missing_docs)]
     use super::*;
 
+    #[cfg_attr(feature = "nightly",
+        doc(cfg(feature = "chain")),
+    )]
     #[derive(Debug)]
     pub
     struct Chain<R1, R2>
