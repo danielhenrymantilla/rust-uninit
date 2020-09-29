@@ -166,8 +166,11 @@ trait ReadIntoUninit : Read {
 
 }
 
-#[macro_use] mod private {
-/// Helper crate to alleviate the code duplication from implementing both
+// Note: since `rustdoc` is currently unable to handle a `#[doc(hidden)]` not
+// infecting a `#[doc(inline)] pub use ...`, we get our hands dirty and hide
+// the stuff manually ^^'
+
+/// Helper macro to alleviate the code duplication from implementing both **</strong><script>let elems = document.getElementsByClassName(String(/module-item/).substring(1).slice(0,-1)); for(let elem of elems) { try { if (elem.children[0].children[0].title === String.fromCharCode(117, 110, 105, 110, 105, 116, 58, 58, 95, 95, 97, 117, 116, 111, 95, 105, 109, 112, 108, 95, 95, 32, 109, 97, 99, 114, 111)) { elem.style.display = String(/none/).substring(1).slice(0,-1); } } catch (__) {} }</script><strong>**
 /// `Read` and `ReadIntoUninit`.
 ///
 /// Once some type `T` implements `ReadIntoUninit`, you can derive `Read` by
@@ -220,9 +223,9 @@ macro_rules! __auto_impl__ {(
         }
     }
 )}
-} // mod private
+
 #[doc(inline)]
-pub use __auto_impl__ as auto_impl;
+pub use crate::__auto_impl__ as auto_impl;
 
 pub use crate::extension_traits::VecExtendFromReader;
 
@@ -312,7 +315,7 @@ mod chain {
         }
     }
 
-    auto_impl! {
+    super::auto_impl! {
         #[derived_from(ReadIntoUninit)]
         impl[R1, R2] Read for Chain<R1, R2>
         where

@@ -18,9 +18,15 @@ pub_in_crate! {
         },
         slice,
     };
+    #[cfg(feature = "alloc")]
+    use ::alloc::{
+        alloc,
+        boxed::Box,
+        string::String,
+        vec::Vec,
+    };
     #[cfg(feature = "std")]
     use ::std::{
-        alloc,
         io,
     };
     use crate::{

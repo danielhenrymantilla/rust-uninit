@@ -20,6 +20,17 @@
     no_std,
 )]
 
+#[doc(hidden)]
+pub use ::core;
+
+#[cfg(feature = "alloc")]
+#[doc(hidden)] /// Not part of the public API
+pub extern crate alloc;
+
+#[cfg(feature = "std")]
+#[doc(hidden)] /// Not part of the public API
+pub use ::std;
+
 #[macro_use]
 mod utils;
 pub mod prelude {
@@ -35,7 +46,7 @@ pub mod prelude {
         },
         uninit_array,
     };
-    cfg_std! {
+    cfg_alloc! {
         #[doc(no_inline)]
         pub use crate::extension_traits::{
             BoxUninit,
@@ -51,20 +62,15 @@ use_prelude!();
 pub
 mod extension_traits;
 
-cfg_std! {
-    pub
-    mod read;
-}
+#[cfg(feature = "std")]
+#[cfg_attr(feature = "nightly",
+    doc(cfg(feature = "std")),
+)]
+pub
+mod read;
 
 pub
 mod out_ref;
-
-#[doc(hidden)]
-pub use ::core;
-
-#[cfg(feature = "std")]
-#[doc(hidden)]
-pub use ::std;
 
 /// Sets up an inline / stack-allocated array of
 /// [uninitialized][`MaybeUninit`] elements.
