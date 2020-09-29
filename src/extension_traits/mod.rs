@@ -15,7 +15,7 @@ pub use self::maybe_uninit::{
 };
 mod maybe_uninit;
 
-cfg_std! {
+cfg_alloc! {
     pub use self::boxed::{
         BoxUninit,
         BoxAssumeInit,
@@ -23,8 +23,13 @@ cfg_std! {
     mod boxed;
 
     pub use self::vec::{
-        VecExtendFromReader,
         VecCapacity,
     };
     mod vec;
+}
+
+cfg_std! {
+    pub use self::vec::{
+        VecExtendFromReader,
+    };
 }

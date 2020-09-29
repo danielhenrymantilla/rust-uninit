@@ -1,4 +1,4 @@
-cfg_std! {
+cfg_alloc! {
 use crate::*;
 use ::core::slice;
 
@@ -328,6 +328,7 @@ impl<T> VecCapacity for Vec<T> {
     }
 }
 
+cfg_std! {
 /// Extension trait for [`Vec`], that grows the vec by a _bounded_ amount of
 /// bytes, obtained when reading from `R`.
 ///
@@ -425,5 +426,7 @@ impl VecExtendFromReader for Vec<u8> {
         ret_of_count = |count| -> () { () },
     }
 }
-
 } // cfg_std!
+
+
+} // cfg_alloc!

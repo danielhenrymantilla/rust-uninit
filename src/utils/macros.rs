@@ -31,3 +31,15 @@ macro_rules! cfg_std {(
         $item
     )*
 )}
+
+macro_rules! cfg_alloc {(
+    $($item:item)*
+) => (
+    $(
+        #[cfg(feature = "alloc")]
+        #[cfg_attr(feature = "nightly",
+            doc(cfg(any(feature = "alloc", feature = "std"))),
+        )]
+        $item
+    )*
+)}

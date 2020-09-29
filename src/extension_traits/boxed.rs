@@ -1,6 +1,8 @@
-use_prelude!(); cfg_std! {
+use_prelude!(); cfg_alloc! {
 
 mod private {
+    use_prelude!();
+
     pub trait Sealed : Sized {}
     impl<T> Sealed for Box<::core::mem::MaybeUninit<T>>
     {}
@@ -165,6 +167,8 @@ trait BoxUninit : private::Sealed {
 }
 
 mod private2 {
+    use_prelude!();
+
     pub trait Sealed {}
     impl<T> Sealed for Box<[::core::mem::MaybeUninit<T>]>
     {}
@@ -235,4 +239,4 @@ trait BoxAssumeInit : private2::Sealed {
     ;
 }
 
-} // cfg_std!
+} // cfg_alloc!

@@ -3,7 +3,7 @@ crate-type = ["rlib"]
 
 [package]
 name = "uninit"
-version = "0.3.0"
+version = "0.4.0-rc0"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
@@ -16,19 +16,24 @@ keywords = ["uninit", "sound", "unsafe", "read", "MaybeUninit"]
 categories = ["memory-management", "rust-patterns"]
 
 readme = "README.md"
-license = "MIT"
+license = "Zlib OR MIT OR Apache-2.0"
 
 [dependencies]
 
 [features]
-std = []
+default = ["std"]
+
+std = ["alloc"]
+alloc = []
+
 nightly = []
 specialization = ["nightly"]
 const_generics = ["nightly"]
-chain = []
 
-default = ["std"]
+chain = []
 
 [package.metadata.docs.rs]
 all-features = true
-rustc-args = ["-C", "opt-level=2"]
+rustc-args = [
+    "-C", "opt-level=2",
+]
