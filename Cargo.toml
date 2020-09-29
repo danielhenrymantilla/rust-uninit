@@ -3,7 +3,7 @@ crate-type = ["rlib"]
 
 [package]
 name = "uninit"
-version = "0.4.0-rc0"
+version = "0.4.0"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
