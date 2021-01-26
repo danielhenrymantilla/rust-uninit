@@ -1,9 +1,6 @@
-[lib]
-crate-type = ["rlib"]
-
 [package]
 name = "uninit"
-version = "0.4.0"
+version = "0.4.1-dev"
 authors = ["Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>"]
 edition = "2018"
 
