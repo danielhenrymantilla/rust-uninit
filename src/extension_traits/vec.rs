@@ -9,25 +9,41 @@ pub
 trait VecCapacity : Sealed {
     type Item;
 
+    /// See <a href="#method.split_at_extra_cap">↓ below ↓</a>.
     fn split_at_extra_cap (self: &'_ mut Self)
-      -> (&'_ mut [Self::Item], Out<'_, [Self::Item]>)
+      -> (&'_ mut [Self::Item], &'_ mut [MaybeUninit<Self::Item>])
     ;
+
+    /// See <a href="#method.spare_cap">↓ below ↓</a>.
+    fn spare_cap (self: &'_ mut Self)
+      -> &'_ mut [MaybeUninit<Self::Item>]
+    ;
+
+    /// See <a href="#method.reserve_uninit">↓ below ↓</a>.
     fn reserve_uninit (self: &'_ mut Self, additional: usize)
-      -> Out<'_, [Self::Item]>
+      -> &'_ mut [MaybeUninit<Self::Item>]
     ;
+
+    /// See <a href="#method.get_backing_buffer">↓ below ↓</a>.
     fn get_backing_buffer (self: &'_ mut Self)
       -> Out<'_, [Self::Item]>
     where
         Self::Item : Copy, // Opinionated stance against accidental memory leaks
     ;
+
+    /// See <a href="#method.into_backing_buffer">↓ below ↓</a>.
     fn into_backing_buffer (self: Self)
       -> Box<[MaybeUninit<Self::Item>]>
     where
         Self::Item : Copy, // Opinionated stance against accidental memory leaks
     ;
+
+    /// See <a href="#method.get_backing_buffer_with_leaking_writes">↓ below ↓</a>.
     fn get_backing_buffer_with_leaking_writes (self: &'_ mut Self)
       -> Out<'_, [Self::Item]>
     ;
+
+    /// See <a href="#method.into_backing_buffer_forget_elems">↓ below ↓</a>.
     fn into_backing_buffer_forget_elems (self: Self)
       -> Box<[MaybeUninit<Self::Item>]>
     ;
@@ -39,6 +55,42 @@ impl<T> Sealed for Vec<T> {}
 impl<T> VecCapacity for Vec<T> {
     #[allow(missing_docs)]
     type Item = T;
+
+    /// Same as `.split_at_extra_cap().1`, but for not invalidating
+    /// —_w.r.t._ aliasing / Stacked Borrows— pointers to the initialized area
+    /// of this `Vec`:
+    ///
+    /// ```rust
+    /// use ::uninit::prelude::*;
+    ///
+    /// let mut v = Vec::with_capacity(2); // len = 0 && 2 uninit
+    /// v.push(0); // len = 1 && 1 uninit
+    /// let at_fst = v.as_mut_ptr();
+    /// v.spare_cap()[0] = MaybeUninit::new(27); // len = 1 && 1 init
+    /// unsafe {
+    ///     v.set_len(2); // len = 2
+    ///     *at_fst += 42; // OK, neither `spare_cap()` nor the `len` interactions invalidated this.
+    /// }
+    /// assert_eq!(v.iter().sum::<i32>(), 42 + 27);
+    /// ```
+    fn spare_cap (self: &'_ mut Vec<T>)
+      -> &'_ mut [MaybeUninit<T>]
+    {
+        let len = self.len();
+        let cap = self.capacity();
+        unsafe {
+            // Safety:
+            //   - The `.add()` is valid per invariants of `Vec`.
+            //   - Per `Vec`'s guarantees, the `len.. cap` range of its backing
+            //     buffer does contain `cap - len` contiguous `MaybeUninit<T>`s.
+            //   - the `.as_mut_ptr()` ptr has RW provenance over the whole
+            //     `0.. cap` range, _a fortiori_ over `len.. cap`.
+            ::core::slice::from_raw_parts_mut(
+                self.as_mut_ptr().add(len).cast::<MaybeUninit<T>>(),
+                cap - len,
+            )
+        }
+    }
 
     /// Splits the `Vec<T>`'s
     /// [backing buffer][`VecCapacity::get_backing_buffer`] into two slices of
@@ -94,7 +146,7 @@ impl<T> VecCapacity for Vec<T> {
     ///     let len = v.len();
     ///     v.reserve(len);
     ///     let (xs, extra) = v.split_at_extra_cap();
-    ///     for (&x, at_dst) in xs.iter().rev().zip(extra) {
+    ///     for (&x, at_dst) in xs.iter().rev().zip(extra.as_out()) {
     ///         at_dst.write(x);
     ///     }
     ///     unsafe {
@@ -109,7 +161,7 @@ impl<T> VecCapacity for Vec<T> {
     /// ```
     #[inline]
     fn split_at_extra_cap (self: &'_ mut Vec<T>)
-      -> (&'_ mut [T], Out<'_, [T]>)
+      -> (&'_ mut [T], &'_ mut [MaybeUninit<T>])
     {
         let len = self.len();
         let backing_buffer = self.get_backing_buffer_with_leaking_writes();
@@ -120,7 +172,11 @@ impl<T> VecCapacity for Vec<T> {
                 // invariant of `Vec<T>`).
                 slice::from_raw_parts_mut(xs.as_mut_ptr(), len)
             },
-            extra,
+            unsafe {
+                // Safety: that part is indeed uninit and garbage can be written
+                // to it.
+                extra.as_mut_uninit()
+            },
         )
     }
 
@@ -136,7 +192,7 @@ impl<T> VecCapacity for Vec<T> {
     /// let mut vec = b"Hello, ".to_vec();
     /// const WORLD: &[u8] = b"World!";
     ///
-    /// let mut extra: Out<'_, [u8]> = vec.reserve_uninit(WORLD.len());
+    /// let mut extra: Out<'_, [u8]> = vec.reserve_uninit(WORLD.len()).as_out();
     /// extra.r().copy_from_slice(WORLD);
     ///
     /// // `.reserve_uninit()` guarantees the following properties:
@@ -160,14 +216,14 @@ impl<T> VecCapacity for Vec<T> {
     /// ```
     #[inline]
     fn reserve_uninit (self: &'_ mut Vec<T>, additional: usize)
-      -> Out<'_, [T]>
+      -> &'_ mut [MaybeUninit<T>]
     {
         self.reserve(additional);
-        let (_, extra) = self.split_at_extra_cap();
+        let extra = self.spare_cap();
         unsafe {
             // Safety: `Vec<T>` guarantees that `cap >= len + additional` and
             // thus that `cap - len >= additional`.
-            extra.get_unchecked_out(.. additional)
+            extra.get_unchecked_mut(.. additional)
         }
     }
 
@@ -381,7 +437,7 @@ macro_rules! make_extend {(
         mut $reader: R,
     ) -> io::Result<$Ret>
     {
-        let $buf: Out<'_, [u8]> = self.reserve_uninit($count_param);
+        let $buf: Out<'_, [u8]> = self.reserve_uninit($count_param).as_out();
         let buf: &mut [u8] = $read_into_buf?;
         let $count: usize = buf.len();
         debug_assert_eq!(

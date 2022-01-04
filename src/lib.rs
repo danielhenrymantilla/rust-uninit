@@ -1,14 +1,13 @@
-#![cfg_attr(feature = "nightly",
-    feature(doc_cfg, external_doc),
-    doc(include = "../README.md"),
+#![cfg_attr(feature = "better-docs",
+    feature(doc_cfg, decl_macro, rustc_attrs),
+    cfg_attr(all(), doc = include_str!("../README.md")),
 )]
 //!
 #![cfg_attr(feature = "specialization",
     feature(specialization),
 )]
-#![cfg_attr(feature = "const_generics",
-    feature(const_generics),
-)]
+
+#![allow(unused_attributes)]
 #![deny(
     elided_lifetimes_in_paths,
     missing_docs,
@@ -16,9 +15,8 @@
     missing_debug_implementations,
     unused_must_use,
 )]
-#![cfg_attr(not(feature = "std"),
-    no_std,
-)]
+
+#![no_std]
 
 #[doc(hidden)]
 pub use ::core;
@@ -29,7 +27,7 @@ pub extern crate alloc;
 
 #[cfg(feature = "std")]
 #[doc(hidden)] /// Not part of the public API
-pub use ::std;
+pub extern crate std;
 
 #[macro_use]
 mod utils;

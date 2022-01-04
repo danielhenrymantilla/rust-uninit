@@ -64,6 +64,7 @@ mod private {
 ///         Box::new([0; 10_000_000])
 ///     }
 ///     # println!("Address: {:p}", alloc_big_boxed_array());
+///     # panic!();
 ///     ```
 ///
 ///   - Whereas the following one does not

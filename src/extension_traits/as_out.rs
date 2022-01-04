@@ -150,7 +150,9 @@ const _: () = {
 
 #[cfg(feature = "const_generics")]
 const _: () = {
-    #[doc(cfg(feature = "const_generics"))]
+    #[cfg_attr(feature = "better-docs",
+        doc(cfg(feature = "const_generics")),
+    )]
     impl<T, const N: usize> AsOut<[T]> for [MaybeUninit<T>; N] {
         #[inline]
         fn as_out<'out> (self: &'out mut Self)
@@ -159,7 +161,10 @@ const _: () = {
             From::from(&mut self[..])
         }
     }
-    #[doc(cfg(feature = "const_generics"))]
+
+    #[cfg_attr(feature = "better-docs",
+        doc(cfg(feature = "const_generics")),
+    )]
     impl<T, const N: usize> AsOut<[T]> for [T; N]
     where
         T : Copy,
