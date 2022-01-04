@@ -170,62 +170,97 @@ trait ReadIntoUninit : Read {
 // infecting a `#[doc(inline)] pub use ...`, we get our hands dirty and hide
 // the stuff manually ^^'
 
-/// Helper macro to alleviate the code duplication from implementing both **</strong><script>let elems = document.getElementsByClassName(String(/module-item/).substring(1).slice(0,-1)); for(let elem of elems) { try { if (elem.children[0].children[0].title === String.fromCharCode(117, 110, 105, 110, 105, 116, 58, 58, 95, 95, 97, 117, 116, 111, 95, 105, 109, 112, 108, 95, 95, 32, 109, 97, 99, 114, 111)) { elem.style.display = String(/none/).substring(1).slice(0,-1); } } catch (__) {} }</script><strong>**
-/// `Read` and `ReadIntoUninit`.
-///
-/// Once some type `T` implements `ReadIntoUninit`, you can derive `Read` by
-/// doing:
-///
-/// ```rust
-/// # macro_rules! ignore {($($t:tt)*) => ()} ignore! {
-/// ::uninit::read::auto_impl! {
-///     #[derived_from(ReadIntoUninit)]
-///     impl Read for X
-/// }
-/// // and if X is generic, over, for instance, `Generics`
-/// ::uninit::read::auto_impl! {
-///     #[derived_from(ReadIntoUninit)]
-///     impl[Generics] Read for X<Generics>
-/// }
-/// # }
-/// ```
-#[macro_export]
-macro_rules! __auto_impl__ {(
-    #[derived_from(ReadIntoUninit)]
-    impl $( [$($generics:tt)*] )? Read for $T:ty
+macro_rules! well_located_public_macro {(
     $(
-        where
-        $($where_clause:tt)*
-    )?
+        #[doc = $doc:expr]
+    )*
+    pub
+    macro_rules! $macro_name:ident {
+        $(
+            $input:tt => $output:tt
+        );+ $(;)?
+    }
 ) => (
-    impl$(<$($generics)*>)? $crate::std::io::Read for $T
-    where
-        $( $($where_clause)* )?
-    {
-        #[inline]
-        fn read (self: &'_ mut Self, buf: &'_ mut [u8])
-          -> $crate::std::io::Result<usize>
-        {
-            <Self as $crate::read::ReadIntoUninit>::read_into_uninit(
-                self,
-                buf.as_out(),
-            ).map(|x| x.len())
-        }
+    #[cfg(not(feature = "better-docs"))]
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! $macro_name {
+        $(
+            $input => $output;
+        )+
+    }
 
-        #[inline]
-        fn read_exact (self: &'_ mut Self, buf: &'_ mut [u8])
-          -> $crate::std::io::Result<()>
-        {
-            <Self as $crate::read::ReadIntoUninit>::read_into_uninit_exact(
-                self,
-                buf.as_out(),
-            ).map(drop)
-        }
+    #[cfg(not(feature = "better-docs"))]
+    pub use $macro_name;
+
+    $(
+        #[doc = $doc]
+    )*
+    #[cfg(feature = "better-docs")]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub
+    macro $macro_name {
+        $(
+            $input => $output,
+        )+
     }
 )}
 
-#[doc(inline)]
-pub use crate::__auto_impl__ as auto_impl;
+well_located_public_macro! {
+    /// Helper macro to alleviate the code duplication from implementing both
+    /// `Read` and `ReadIntoUninit`.
+    ///
+    /// Once some type `T` implements `ReadIntoUninit`, you can derive `Read` by
+    /// doing:
+    ///
+    /// ```rust
+    /// # macro_rules! ignore {($($t:tt)*) => ()} ignore! {
+    /// ::uninit::read::auto_impl! {
+    ///     #[derived_from(ReadIntoUninit)]
+    ///     impl Read for X
+    /// }
+    /// // and if X is generic, over, for instance, `Generics`
+    /// ::uninit::read::auto_impl! {
+    ///     #[derived_from(ReadIntoUninit)]
+    ///     impl[Generics] Read for X<Generics>
+    /// }
+    /// # }
+    /// ```
+    pub
+    macro_rules! auto_impl {(
+        #[derived_from(ReadIntoUninit)]
+        impl $( [$($generics:tt)*] )? Read for $T:ty
+        $(
+            where
+            $($where_clause:tt)*
+        )?
+    ) => (
+        impl$(<$($generics)*>)? $crate::std::io::Read for $T
+        where
+            $( $($where_clause)* )?
+        {
+            #[inline]
+            fn read (self: &'_ mut Self, buf: &'_ mut [u8])
+              -> $crate::std::io::Result<usize>
+            {
+                <Self as $crate::read::ReadIntoUninit>::read_into_uninit(
+                    self,
+                    buf.as_out(),
+                ).map(|x| x.len())
+            }
+
+            #[inline]
+            fn read_exact (self: &'_ mut Self, buf: &'_ mut [u8])
+              -> $crate::std::io::Result<()>
+            {
+                <Self as $crate::read::ReadIntoUninit>::read_into_uninit_exact(
+                    self,
+                    buf.as_out(),
+                ).map(drop)
+            }
+        }
+    )}
+}
 
 pub use crate::extension_traits::VecExtendFromReader;
 
