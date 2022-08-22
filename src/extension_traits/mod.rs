@@ -17,8 +17,9 @@ mod maybe_uninit;
 
 cfg_alloc! {
     pub use self::boxed::{
-        BoxUninit,
         BoxAssumeInit,
+        BoxNewUninitSlice,
+        BoxUninit,
     };
     mod boxed;
 
