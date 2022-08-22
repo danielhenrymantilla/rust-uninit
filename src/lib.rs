@@ -47,8 +47,9 @@ pub mod prelude {
     cfg_alloc! {
         #[doc(no_inline)]
         pub use crate::extension_traits::{
-            BoxUninit,
             BoxAssumeInit,
+            BoxNewUninitSlice,
+            BoxUninit,
             VecCapacity,
         };
     }
