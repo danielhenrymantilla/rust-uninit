@@ -190,11 +190,11 @@ impl<T> BoxAssumeInit for Box<[MaybeUninit<T>]> {
     ///     [`.assume_init()`][`MaybeUninit::assume_init`].
     #[inline]
     unsafe
-    fn assume_init (this: Box<[MaybeUninit<T>]>)
+    fn assume_init (self: Box<[MaybeUninit<T>]>)
       -> Box<[T]>
     {
-        let len = this.len();
-        let ptr = Box::leak(this).as_mut_ptr();
+        let len = self.len();
+        let ptr = Box::leak(self).as_mut_ptr();
         Box::from_raw(slice::from_raw_parts_mut(
             ptr.cast(), len,
         ))
@@ -212,10 +212,10 @@ impl<T> BoxAssumeInit for Box<MaybeUninit<T>> {
     ///     [`.assume_init()`][`MaybeUninit::assume_init`].
     #[inline]
     unsafe
-    fn assume_init (this: Box<MaybeUninit<T>>)
+    fn assume_init (self: Box<MaybeUninit<T>>)
       -> Box<T>
     {
-        Box::from_raw(Box::into_raw(this).cast())
+        Box::from_raw(Box::into_raw(self).cast())
     }
 }
 
@@ -235,7 +235,7 @@ trait BoxAssumeInit : private2::Sealed {
     type Ret : ?Sized;
 
     unsafe
-    fn assume_init (this: Self)
+    fn assume_init (self: Self)
       -> Box<Self::Ret>
     ;
 }
