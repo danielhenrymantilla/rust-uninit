@@ -2,6 +2,8 @@ use_prelude!();
 
 use ::core::mem::ManuallyDrop;
 
+use crate::extension_traits::AsUninit;
+
 #[cfg(doc)]
 use crate::extension_traits::ManuallyDropMut;
 
@@ -40,7 +42,7 @@ use crate::extension_traits::ManuallyDropMut;
 /// assert_eq!(x, y);
 /// ```
 pub
-trait AsOut<Pointee : ?Sized> {
+trait AsOut<Pointee : ?Sized + AsUninit> {
     #[allow(missing_docs)]
     fn as_out<'out> (self: &'out mut Self)
       -> Out<'out, Pointee>

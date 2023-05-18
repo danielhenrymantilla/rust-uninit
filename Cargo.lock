@@ -68,7 +68,7 @@ checksum = "c4f5b37a154999a8f3f98cc23a628d850e154479cd94decf3414696e12e31aaf"
 
 [[package]]
 name = "uninit"
-version = "0.5.1-rc1"
+version = "0.6.0"
 dependencies = [
  "extension-traits",
 ]

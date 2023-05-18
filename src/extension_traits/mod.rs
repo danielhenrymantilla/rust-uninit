@@ -4,6 +4,10 @@ pub use self::as_out::{
     AsOut,
 };
 mod as_out;
+pub use self::as_uninit::{
+    AsUninit,
+};
+mod as_uninit;
 
 pub use self::manually_drop_mut::{
     ManuallyDropMut,

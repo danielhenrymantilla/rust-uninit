@@ -170,7 +170,7 @@ impl<T> VecCapacity for Vec<T> {
             unsafe {
                 // Safety: the first `len` elements are initialized (safety
                 // invariant of `Vec<T>`).
-                slice::from_raw_parts_mut(xs.as_mut_ptr(), len)
+                &mut *xs.as_mut_ptr()
             },
             unsafe {
                 // Safety: that part is indeed uninit and garbage can be written
