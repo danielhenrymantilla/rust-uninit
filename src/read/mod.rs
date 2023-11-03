@@ -72,7 +72,6 @@ use ::std::io::Read;
 /// ```
 pub unsafe trait ReadIntoUninit: Read
 // Safety: `.read_into_uninit_exact()` delegates to `.read_into_uninit()`.
-trait ReadIntoUninit : Read
 {
     /// Single attempt to read bytes from `Self` into `buf`.
     ///
