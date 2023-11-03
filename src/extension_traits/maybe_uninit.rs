@@ -2,44 +2,36 @@ use_prelude!();
 
 /// Extension trait providing tranformations between init and uninit.
 ///
-/// This is currently only implemented for [`Copy`] types, since the
-/// semantics when [`drop` glue][`mem::needs_drop`] is involved are less
-/// easy to handle correctly (danger of leaking memory).
-///
 /// # `from_mut`?
 ///
-/// The conversion `&mut T` to `&mut MaybeUninit<T>` is actually unsound,
-/// since there is nothing preventing the obtained `mut` reference to be used
-/// to overwrite the pointee with `MaybeUninit::uninit()`, _i.e._, an
-/// uninitialised (and thus garbage) value:
+/// This is provided by [`AsMaybeUninit::as_mut_uninit`].
 ///
-/// ```rust,no_run
-/// use ::core::mem::{MaybeUninit, transmute};
+/// The conversion from `&mut T` to `&mut MaybeUninit<T>` is `unsafe`, since there
+/// are restrictions on what safe code can do with the output. These are the same
+/// requirements as [`Out::as_mut_uninit`].
 ///
-/// unsafe fn from_mut<T> (it: &'_ mut T) -> &'_ mut MaybeUninit<T>
-/// {
-///     transmute(it)
-/// }
+/// Specifically, nothing must overwrite an initialized pointee
+/// with `MaybeUninit::uninit()` data, _i.e._, an
+/// uninitialised (and thus garbage) value, even though the API of `&mut T`
+/// allows this safely. This is similar to `Pin::get_mut_unchecked`.
 ///
-/// let mut x = Box::new(42);
-/// let at_x_uninit: &mut MaybeUninit<Box<i32>> = unsafe {
-///     // If this were safe...
-///     from_mut(&mut x)
-/// };
-/// // Then safe code would be able to do this:
-/// *at_x_uninit = MaybeUninit::uninit(); // <--------+
-/// // drop(x); // drops an uninitialized value! UB --+
-/// ```
-///
-/// The author of the crate did overlook that and offered such transformation
-/// within a non-`unsafe` function, leading to an unsound function. Hence the
-/// yanked versions of the crate.
-///
-/// The correct way to do this now is through
+/// The correct way to convert `&mut T` into a maybe-initialized reference is through
 /// [the `&out` reference abstraction][`crate::out_ref`].
+///
+/// [`AsMaybeUninit::as_mut_uninit`]: crate::AsMaybeUninit::as_mut_uninit
+/// [`Out::as_mut_uninit`]: crate::out_ref::Out::as_mut_uninit
 pub trait MaybeUninitExt {
-    #[allow(missing_docs)]
+    /// The inner type that may be initialized.
+    ///
+    /// - For `MaybeUninit<T: Sized>`, this is `T`.
+    /// - For `[MaybeUninit<T>]`, this is `[T]`.
     type T: ?Sized;
+
+    /// Gets a raw pointer to the inner type.
+    fn as_ptr(&self) -> *const Self::T;
+
+    /// Gets a raw mutable pointer to the inner type.
+    fn as_mut_ptr(&mut self) -> *mut Self::T;
 
     /// Converts a `&MaybeUninit<_>` to a `& _`.
     ///
@@ -49,7 +41,7 @@ pub trait MaybeUninitExt {
     /// that [`.assume_init`][`MaybeUninit::assume_init`] does. Mainly:
     ///
     ///   - The `Self::T` that `self` points to must be initialized.
-    unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T;
+    unsafe fn assume_init_by_ref(&self) -> &Self::T;
 
     /// Converts a `&mut MaybeUninit<_>` to a `&mut _`.
     ///
@@ -60,15 +52,26 @@ pub trait MaybeUninitExt {
     /// Mainly:
     ///
     ///   - The `Self::T` that `self` points to must be initialized.
-    unsafe fn assume_init_by_mut(self: &'_ mut Self) -> &'_ mut Self::T;
+    unsafe fn assume_init_by_mut(&mut self) -> &mut Self::T;
 
     /// Downgrades a `& _` to a `&MaybeUninit<_>`. Rarely useful.
+    #[deprecated = "Use `AsUninit::as_ref_uninit` instead"]
     fn from_ref(init_ref: &'_ Self::T) -> &'_ Self;
 }
 
 #[allow(unused_unsafe)]
-impl<T: Copy> MaybeUninitExt for MaybeUninit<T> {
+impl<T> MaybeUninitExt for MaybeUninit<T> {
     type T = T;
+
+    #[inline]
+    fn as_ptr(&self) -> *const Self::T {
+        self.as_ptr()
+    }
+
+    #[inline]
+    fn as_mut_ptr(&mut self) -> *mut Self::T {
+        self.as_mut_ptr()
+    }
 
     #[inline]
     unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T {
@@ -76,7 +79,7 @@ impl<T: Copy> MaybeUninitExt for MaybeUninit<T> {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(self)
+            &*(self as *const _ as *const Self::T)
         }
     }
 
@@ -86,7 +89,7 @@ impl<T: Copy> MaybeUninitExt for MaybeUninit<T> {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
-            mem::transmute(self)
+            &mut *(self as *mut _ as *mut Self::T)
         }
     }
 
@@ -102,8 +105,18 @@ impl<T: Copy> MaybeUninitExt for MaybeUninit<T> {
 }
 
 #[allow(unused_unsafe)]
-impl<T: Copy> MaybeUninitExt for [MaybeUninit<T>] {
+impl<T> MaybeUninitExt for [MaybeUninit<T>] {
     type T = [T];
+
+    #[inline]
+    fn as_ptr(&self) -> *const Self::T {
+        self as *const _ as *const Self::T
+    }
+
+    #[inline]
+    fn as_mut_ptr(&mut self) -> *mut Self::T {
+        self as *mut _ as *mut Self::T
+    }
 
     #[inline]
     unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T {

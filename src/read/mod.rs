@@ -138,7 +138,7 @@ pub unsafe trait ReadIntoUninit: Read
             //
             //   - this is the "concatenation" of all the "buf[.. n]"
             //     initialisation witnesses.
-            buf.assume_all_init()
+            buf.assume_init()
         })
     }
 

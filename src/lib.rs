@@ -17,6 +17,8 @@
 #[doc(hidden)]
 pub use ::core;
 
+pub use as_maybe_uninit::AsMaybeUninit;
+
 #[cfg(feature = "alloc")]
 #[doc(hidden)]
 /// Not part of the public API
@@ -51,8 +53,8 @@ pub mod prelude {
 
 use_prelude!();
 
+mod as_maybe_uninit;
 pub mod extension_traits;
-
 #[cfg(feature = "std")]
 #[cfg_attr(feature = "nightly", doc(cfg(feature = "std")))]
 pub mod read;
