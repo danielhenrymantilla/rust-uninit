@@ -1,6 +1,7 @@
 use ::core::mem::ManuallyDrop;
 
-#[cfg(doc)] use crate::Out;
+#[cfg(doc)]
+use crate::Out;
 
 /// Extension trait providing a cast to the [`ManuallyDrop`] type.
 ///
@@ -57,28 +58,21 @@ use ::core::mem::ManuallyDrop;
 /// assert!(Rc::try_unwrap(rc).is_err());
 /// ```
 #[allow(missing_docs)]
-pub
-trait ManuallyDropMut {
-    type Ret : ?Sized;
+pub trait ManuallyDropMut {
+    type Ret: ?Sized;
 
-    fn manually_drop_mut (self: &'_ mut Self)
-      -> &'_ mut Self::Ret
-    ;
+    fn manually_drop_mut(self: &'_ mut Self) -> &'_ mut Self::Ret;
 }
 
 impl<T> ManuallyDropMut for [T] {
     type Ret = [ManuallyDrop<T>];
 
     #[inline]
-    fn manually_drop_mut<'__> (self: &'__ mut [T])
-      -> &'__ mut [ManuallyDrop<T>]
-    {
+    fn manually_drop_mut<'__>(self: &'__ mut [T]) -> &'__ mut [ManuallyDrop<T>] {
         let len = self.len();
         unsafe {
             // Safety: `ManuallyDrop<T>` is `#[repr(transparent)]`
-            ::core::slice::from_raw_parts_mut(
-                self.as_mut_ptr().cast(), len,
-            )
+            ::core::slice::from_raw_parts_mut(self.as_mut_ptr().cast(), len)
         }
     }
 }
@@ -87,9 +81,7 @@ impl<T> ManuallyDropMut for T {
     type Ret = ManuallyDrop<T>;
 
     #[inline]
-    fn manually_drop_mut<'__> (self: &'__ mut T)
-      -> &'__ mut ManuallyDrop<T>
-    {
+    fn manually_drop_mut<'__>(self: &'__ mut T) -> &'__ mut ManuallyDrop<T> {
         unsafe {
             // Safety: `ManuallyDrop<T>` is `#[repr(transparent)]`
             ::core::mem::transmute(self)

@@ -70,9 +70,10 @@ use ::std::io::Read;
 ///     })
 /// }
 /// ```
-pub
-unsafe // Safety: `.read_into_uninit_exact()` delegates to `.read_into_uninit()`.
-trait ReadIntoUninit : Read {
+pub unsafe trait ReadIntoUninit: Read
+// Safety: `.read_into_uninit_exact()` delegates to `.read_into_uninit()`.
+trait ReadIntoUninit : Read
+{
     /// Single attempt to read bytes from `Self` into `buf`.
     ///
     /// On success, it returns the bytes having been read.
@@ -92,11 +93,10 @@ trait ReadIntoUninit : Read {
     ///
     /// This is not guaranteed to read `buf.len()` bytes, see the docs of
     /// [`.read()`][`Read::read`] for more information.
-    fn read_into_uninit<'buf> (
+    fn read_into_uninit<'buf>(
         self: &'_ mut Self,
         buf: Out<'buf, [u8]>,
-    ) -> io::Result<&'buf mut [u8]>
-    ;
+    ) -> io::Result<&'buf mut [u8]>;
 
     /// Attempts to _fill_ `buf` through multiple `.read()` calls if necessary.
     ///
@@ -109,34 +109,28 @@ trait ReadIntoUninit : Read {
     ///
     /// See the docs of [`.read_exact()`][`Read::read_exact`] for more
     /// information.
-    fn read_into_uninit_exact<'buf> (
+    fn read_into_uninit_exact<'buf>(
         self: &'_ mut Self,
         mut buf: Out<'buf, [u8]>,
-    ) -> io::Result<&'buf mut [u8]>
-    {
+    ) -> io::Result<&'buf mut [u8]> {
         {
             let mut buf = buf.reborrow();
             while buf.is_empty().not() {
-                match self
-                        .read_into_uninit(buf.r())
-                        .map(|it| it.len())
-                {
-                    | Ok(0) => {
+                match self.read_into_uninit(buf.r()).map(|it| it.len()) {
+                    Ok(0) => {
                         return Err(io::Error::new(
                             io::ErrorKind::UnexpectedEof,
                             "failed to fill whole buffer",
                         ));
-                    },
-                    | Ok(n) => {
+                    }
+                    Ok(n) => {
                         // buf = &mut buf[n ..];
-                        buf = buf.get_out(n ..).unwrap();
-                    },
-                    | Err(ref e)
-                        if e.kind() == io::ErrorKind::Interrupted
-                    => {},
-                    | Err(e) => {
+                        buf = buf.get_out(n..).unwrap();
+                    }
+                    Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                    Err(e) => {
                         return Err(e);
-                    },
+                    }
                 }
             }
         }
@@ -151,19 +145,17 @@ trait ReadIntoUninit : Read {
 
     /// Chains / concats two `ReadIntoUninit` readers into one.
     #[cfg(feature = "chain")]
-    #[cfg_attr(feature = "nightly",
-        doc(cfg(feature = "chain")),
-    )]
-    fn chain<R : ReadIntoUninit> (
-        self: Self,
-        next: R,
-    ) -> chain::Chain<Self, R>
+    #[cfg_attr(feature = "nightly", doc(cfg(feature = "chain")))]
+    fn chain<R: ReadIntoUninit>(self: Self, next: R) -> chain::Chain<Self, R>
     where
-        Self : Sized,
+        Self: Sized,
     {
-        chain::Chain { first: self, second: next, first_done: false }
+        chain::Chain {
+            first: self,
+            second: next,
+            first_done: false,
+        }
     }
-
 }
 
 // Note: since `rustdoc` is currently unable to handle a `#[doc(hidden)]` not
@@ -267,67 +259,50 @@ pub use crate::extension_traits::VecExtendFromReader;
 mod impls;
 
 #[cfg(feature = "chain")]
-#[cfg_attr(feature = "nightly",
-    doc(cfg(feature = "chain")),
-)]
-pub
-mod chain {
+#[cfg_attr(feature = "nightly", doc(cfg(feature = "chain")))]
+pub mod chain {
     #![allow(missing_docs)]
     use super::*;
 
-    #[cfg_attr(feature = "nightly",
-        doc(cfg(feature = "chain")),
-    )]
+    #[cfg_attr(feature = "nightly", doc(cfg(feature = "chain")))]
     #[derive(Debug)]
-    pub
-    struct Chain<R1, R2>
+    pub struct Chain<R1, R2>
     where
-        R1 : ReadIntoUninit,
-        R2 : ReadIntoUninit,
+        R1: ReadIntoUninit,
+        R2: ReadIntoUninit,
     {
-        pub(in super)
-        first: R1,
+        pub(super) first: R1,
 
-        pub(in super)
-        second: R2,
+        pub(super) second: R2,
 
-        pub(in super)
-        first_done: bool,
+        pub(super) first_done: bool,
     }
 
     impl<R1, R2> Chain<R1, R2>
     where
-        R1 : ReadIntoUninit,
-        R2 : ReadIntoUninit,
+        R1: ReadIntoUninit,
+        R2: ReadIntoUninit,
     {
-        pub
-        fn into_inner (self: Self)
-          -> (R1, R2)
-        {
-            let Self { first, second, ..} = self;
+        pub fn into_inner(self: Self) -> (R1, R2) {
+            let Self { first, second, .. } = self;
             (first, second)
         }
 
-        pub
-        fn get_ref (self: &'_ Self)
-          -> (&'_ R1, &'_ R2)
-        {
-            let Self { first, second, ..} = self;
+        pub fn get_ref(self: &'_ Self) -> (&'_ R1, &'_ R2) {
+            let Self { first, second, .. } = self;
             (first, second)
         }
     }
 
-    unsafe
-    impl<R1, R2> ReadIntoUninit for Chain<R1, R2>
+    unsafe impl<R1, R2> ReadIntoUninit for Chain<R1, R2>
     where
-        R1 : ReadIntoUninit,
-        R2 : ReadIntoUninit,
+        R1: ReadIntoUninit,
+        R2: ReadIntoUninit,
     {
-        fn read_into_uninit<'buf> (
+        fn read_into_uninit<'buf>(
             self: &'_ mut Self,
             mut buf: Out<'buf, [u8]>,
-        )   -> io::Result<&'buf mut [u8]>
-        {
+        ) -> io::Result<&'buf mut [u8]> {
             let len = buf.len();
             if len == 0 {
                 return Ok(buf.copy_from_slice(&[]));
@@ -341,7 +316,7 @@ mod chain {
                         // Safety: `buf_` has been a witness of the
                         // initialization of these bytes.
                         let len = buf_.len();
-                        let buf = buf.get_out(.. len).unwrap();
+                        let buf = buf.get_out(..len).unwrap();
                         Ok(buf.assume_all_init())
                     };
                 }

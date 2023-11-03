@@ -3,30 +3,28 @@
     cfg_attr(all(), doc = include_str!("../README.md")),
 )]
 //!
-#![cfg_attr(feature = "specialization",
-    feature(specialization),
-)]
-
+#![cfg_attr(feature = "specialization", feature(specialization))]
 #![allow(unused_attributes)]
 #![deny(
     elided_lifetimes_in_paths,
     missing_docs,
     missing_copy_implementations,
     missing_debug_implementations,
-    unused_must_use,
+    unused_must_use
 )]
-
 #![no_std]
 
 #[doc(hidden)]
 pub use ::core;
 
 #[cfg(feature = "alloc")]
-#[doc(hidden)] /// Not part of the public API
+#[doc(hidden)]
+/// Not part of the public API
 pub extern crate alloc;
 
 #[cfg(feature = "std")]
-#[doc(hidden)] /// Not part of the public API
+#[doc(hidden)]
+/// Not part of the public API
 pub extern crate std;
 
 #[macro_use]
@@ -35,13 +33,8 @@ pub mod prelude {
     //! Reexports of pervasive items.
     #[doc(no_inline)]
     pub use crate::{
-        extension_traits::{
-            AsOut,
-            ManuallyDropMut,
-        },
-        out_ref::{
-            Out,
-        },
+        extension_traits::{AsOut, ManuallyDropMut},
+        out_ref::Out,
         uninit_array,
     };
     cfg_alloc! {
@@ -58,18 +51,13 @@ pub mod prelude {
 
 use_prelude!();
 
-pub
-mod extension_traits;
+pub mod extension_traits;
 
 #[cfg(feature = "std")]
-#[cfg_attr(feature = "nightly",
-    doc(cfg(feature = "std")),
-)]
-pub
-mod read;
+#[cfg_attr(feature = "nightly", doc(cfg(feature = "std")))]
+pub mod read;
 
-pub
-mod out_ref;
+pub mod out_ref;
 
 /// Sets up an inline / stack-allocated array of
 /// [uninitialized][`MaybeUninit`] elements.
@@ -88,16 +76,17 @@ mod out_ref;
 /// );
 /// ```
 #[macro_export]
-macro_rules! uninit_array {(
+macro_rules! uninit_array {
+    (
     $T:ty ; $count:expr
-) => ({
-    use $crate::core::mem::MaybeUninit;
-    const __UNINIT_ARRAY_COUNT__: usize = $count;
-    unsafe {
-        // # Safety
-        //
-        //   - `mem::uninitialized::<[MaybeUninit<_>; _]>()` is sound.
-        MaybeUninit::<[MaybeUninit<$T>; __UNINIT_ARRAY_COUNT__]>::uninit()
-            .assume_init()
-    }
-})}
+) => {{
+        use $crate::core::mem::MaybeUninit;
+        const __UNINIT_ARRAY_COUNT__: usize = $count;
+        unsafe {
+            // # Safety
+            //
+            //   - `mem::uninitialized::<[MaybeUninit<_>; _]>()` is sound.
+            MaybeUninit::<[MaybeUninit<$T>; __UNINIT_ARRAY_COUNT__]>::uninit().assume_init()
+        }
+    }};
+}

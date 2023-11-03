@@ -1,5 +1,4 @@
 #[macro_use]
 mod macros;
 
-pub(in crate)
-mod prelude;
+pub(crate) mod prelude;

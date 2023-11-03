@@ -37,10 +37,9 @@ use_prelude!();
 ///
 /// The correct way to do this now is through
 /// [the `&out` reference abstraction][`crate::out_ref`].
-pub
-trait MaybeUninitExt {
+pub trait MaybeUninitExt {
     #[allow(missing_docs)]
-    type T : ?Sized;
+    type T: ?Sized;
 
     /// Converts a `&MaybeUninit<_>` to a `& _`.
     ///
@@ -50,10 +49,7 @@ trait MaybeUninitExt {
     /// that [`.assume_init`][`MaybeUninit::assume_init`] does. Mainly:
     ///
     ///   - The `Self::T` that `self` points to must be initialized.
-    unsafe
-    fn assume_init_by_ref (self: &'_ Self)
-      -> &'_ Self::T
-    ;
+    unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T;
 
     /// Converts a `&mut MaybeUninit<_>` to a `&mut _`.
     ///
@@ -64,26 +60,18 @@ trait MaybeUninitExt {
     /// Mainly:
     ///
     ///   - The `Self::T` that `self` points to must be initialized.
-    unsafe
-    fn assume_init_by_mut (self: &'_ mut Self)
-      -> &'_ mut Self::T
-    ;
+    unsafe fn assume_init_by_mut(self: &'_ mut Self) -> &'_ mut Self::T;
 
     /// Downgrades a `& _` to a `&MaybeUninit<_>`. Rarely useful.
-    fn from_ref (init_ref: &'_ Self::T)
-      -> &'_ Self
-    ;
+    fn from_ref(init_ref: &'_ Self::T) -> &'_ Self;
 }
 
 #[allow(unused_unsafe)]
-impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
+impl<T: Copy> MaybeUninitExt for MaybeUninit<T> {
     type T = T;
 
     #[inline]
-    unsafe
-    fn assume_init_by_ref (self: &'_ Self)
-      -> &'_ Self::T
-    {
+    unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T {
         unsafe {
             // # Safety
             //
@@ -93,10 +81,7 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     }
 
     #[inline]
-    unsafe
-    fn assume_init_by_mut (self: &'_ mut Self)
-      -> &'_ mut Self::T
-    {
+    unsafe fn assume_init_by_mut(self: &'_ mut Self) -> &'_ mut Self::T {
         unsafe {
             // # Safety
             //
@@ -106,9 +91,7 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
     }
 
     #[inline]
-    fn from_ref (some_ref: &'_ Self::T)
-      -> &'_ Self
-    {
+    fn from_ref(some_ref: &'_ Self::T) -> &'_ Self {
         unsafe {
             // # Safety
             //
@@ -119,56 +102,39 @@ impl<T : Copy> MaybeUninitExt for MaybeUninit<T> {
 }
 
 #[allow(unused_unsafe)]
-impl<T : Copy> MaybeUninitExt for [MaybeUninit<T>] {
+impl<T: Copy> MaybeUninitExt for [MaybeUninit<T>] {
     type T = [T];
 
     #[inline]
-    unsafe
-    fn assume_init_by_ref (self: &'_ Self)
-      -> &'_ Self::T
-    {
+    unsafe fn assume_init_by_ref(self: &'_ Self) -> &'_ Self::T {
         unsafe {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
             let len = self.len();
-            slice::from_raw_parts(
-                self.as_ptr().cast(),
-                len,
-            )
+            slice::from_raw_parts(self.as_ptr().cast(), len)
         }
     }
 
     #[inline]
-    unsafe
-    fn assume_init_by_mut (self: &'_ mut Self)
-      -> &'_ mut Self::T
-    {
+    unsafe fn assume_init_by_mut(self: &'_ mut Self) -> &'_ mut Self::T {
         unsafe {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
             let len = self.len();
-            slice::from_raw_parts_mut(
-                self.as_mut_ptr().cast(),
-                len,
-            )
+            slice::from_raw_parts_mut(self.as_mut_ptr().cast(), len)
         }
     }
 
     #[inline]
-    fn from_ref (slice: &'_ Self::T)
-      -> &'_ Self
-    {
+    fn from_ref(slice: &'_ Self::T) -> &'_ Self {
         unsafe {
             // # Safety
             //
             //   - Same memory layout, bounded lifetimes, same mut-ness
             let len = slice.len();
-            slice::from_raw_parts(
-                slice.as_ptr().cast(),
-                len,
-            )
+            slice::from_raw_parts(slice.as_ptr().cast(), len)
         }
     }
 }

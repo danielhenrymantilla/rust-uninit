@@ -39,70 +39,55 @@ use crate::extension_traits::ManuallyDropMut;
 ///
 /// assert_eq!(x, y);
 /// ```
-pub
-trait AsOut<Pointee : ?Sized> {
+pub trait AsOut<Pointee: ?Sized> {
     #[allow(missing_docs)]
-    fn as_out<'out> (self: &'out mut Self)
-      -> Out<'out, Pointee>
-    ;
+    fn as_out<'out>(self: &'out mut Self) -> Out<'out, Pointee>;
 }
 
 impl<T> AsOut<T> for MaybeUninit<T> {
     #[inline]
-    fn as_out<'out> (self: &'out mut MaybeUninit<T>)
-      -> Out<'out, T>
-    {
+    fn as_out<'out>(self: &'out mut MaybeUninit<T>) -> Out<'out, T> {
         self.into()
     }
 }
 
 impl<T> AsOut<T> for T
 where
-    T : Copy,
+    T: Copy,
 {
     #[inline]
-    fn as_out<'out> (self: &'out mut T)
-      -> Out<'out, T>
-    {
+    fn as_out<'out>(self: &'out mut T) -> Out<'out, T> {
         self.into()
     }
 }
 
 impl<T> AsOut<[T]> for [MaybeUninit<T>] {
     #[inline]
-    fn as_out<'out> (self: &'out mut [MaybeUninit<T>])
-      -> Out<'out, [T]>
-    {
+    fn as_out<'out>(self: &'out mut [MaybeUninit<T>]) -> Out<'out, [T]> {
         self.into()
     }
 }
 
 impl<T> AsOut<[T]> for [T]
 where
-    T : Copy,
+    T: Copy,
 {
     #[inline]
-    fn as_out<'out> (self: &'out mut [T])
-      -> Out<'out, [T]>
-    {
+    fn as_out<'out>(self: &'out mut [T]) -> Out<'out, [T]> {
         self.into()
     }
 }
 
 impl<T> AsOut<T> for ManuallyDrop<T> {
     #[inline]
-    fn as_out<'out> (self: &'out mut ManuallyDrop<T>)
-      -> Out<'out, T>
-    {
+    fn as_out<'out>(self: &'out mut ManuallyDrop<T>) -> Out<'out, T> {
         self.into()
     }
 }
 
 impl<T> AsOut<[T]> for [ManuallyDrop<T>] {
     #[inline]
-    fn as_out<'out> (self: &'out mut [ManuallyDrop<T>])
-      -> Out<'out, [T]>
-    {
+    fn as_out<'out>(self: &'out mut [ManuallyDrop<T>]) -> Out<'out, [T]> {
         self.into()
     }
 }
@@ -150,29 +135,21 @@ const _: () = {
 
 #[cfg(feature = "const_generics")]
 const _: () = {
-    #[cfg_attr(feature = "better-docs",
-        doc(cfg(feature = "const_generics")),
-    )]
+    #[cfg_attr(feature = "better-docs", doc(cfg(feature = "const_generics")))]
     impl<T, const N: usize> AsOut<[T]> for [MaybeUninit<T>; N] {
         #[inline]
-        fn as_out<'out> (self: &'out mut Self)
-          -> Out<'out, [T]>
-        {
+        fn as_out<'out>(self: &'out mut Self) -> Out<'out, [T]> {
             From::from(&mut self[..])
         }
     }
 
-    #[cfg_attr(feature = "better-docs",
-        doc(cfg(feature = "const_generics")),
-    )]
+    #[cfg_attr(feature = "better-docs", doc(cfg(feature = "const_generics")))]
     impl<T, const N: usize> AsOut<[T]> for [T; N]
     where
-        T : Copy,
+        T: Copy,
     {
         #[inline]
-        fn as_out<'out> (self: &'out mut Self)
-          -> Out<'out, [T]>
-        {
+        fn as_out<'out>(self: &'out mut Self) -> Out<'out, [T]> {
             From::from(&mut self[..])
         }
     }

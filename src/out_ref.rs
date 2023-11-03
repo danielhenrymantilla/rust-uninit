@@ -1,15 +1,9 @@
 //! `&out _` references in stable Rust!
 
-use crate::{
-    extension_traits::{AsOut, MaybeUninitExt},
-};
+use crate::extension_traits::{AsOut, MaybeUninitExt};
 use ::core::{
-    mem::{self,
-        ManuallyDrop,
-        MaybeUninit,
-    },
-    ptr,
-    slice,
+    mem::{self, ManuallyDrop, MaybeUninit},
+    ptr, slice,
 };
 
 /// Wrapper expressing the semantics of `&out T` references
@@ -36,11 +30,7 @@ use ::core::{
 ///         before the [`.as_out()`][`crate::AsOut`] "coercion".
 #[derive(Debug)]
 #[repr(transparent)]
-pub
-struct Out<'out, T : 'out + ?Sized> (
-    ptr::NonNull<T>,
-    ::core::marker::PhantomData<&'out mut T>,
-);
+pub struct Out<'out, T: 'out + ?Sized>(ptr::NonNull<T>, ::core::marker::PhantomData<&'out mut T>);
 
 // # Safety
 //
@@ -49,20 +39,12 @@ struct Out<'out, T : 'out + ?Sized> (
 // `MaybeUninit` plays no role in that regard).
 //
 // Thus `Out` is `{Send,Sync}` if and only if `&mut` is.
-unsafe impl<'out, T : ?Sized + 'out> Send for Out<'out, T>
-where
-    &'out mut T : Send,
-{}
-unsafe impl<'out, T : ?Sized + 'out> Sync for Out<'out, T>
-where
-    &'out mut T : Sync,
-{}
+unsafe impl<'out, T: ?Sized + 'out> Send for Out<'out, T> where &'out mut T: Send {}
+unsafe impl<'out, T: ?Sized + 'out> Sync for Out<'out, T> where &'out mut T: Sync {}
 
-impl<'out, T : 'out> From<&'out mut MaybeUninit<T>> for Out<'out, T> {
+impl<'out, T: 'out> From<&'out mut MaybeUninit<T>> for Out<'out, T> {
     #[inline]
-    fn from (p: &'out mut MaybeUninit<T>)
-      -> Out<'out, T>
-    {
+    fn from(p: &'out mut MaybeUninit<T>) -> Out<'out, T> {
         Out(
             ptr::NonNull::<MaybeUninit<T>>::from(p).cast(),
             Default::default(),
@@ -70,14 +52,12 @@ impl<'out, T : 'out> From<&'out mut MaybeUninit<T>> for Out<'out, T> {
     }
 }
 
-impl<'out, T : 'out> From<&'out mut T> for Out<'out, T>
+impl<'out, T: 'out> From<&'out mut T> for Out<'out, T>
 where
-    T : Copy, // prevent accidentally leaking memory
+    T: Copy, // prevent accidentally leaking memory
 {
     #[inline]
-    fn from (p: &'out mut T)
-      -> Out<'out, T>
-    {
+    fn from(p: &'out mut T) -> Out<'out, T> {
         unsafe {
             // # Safety
             //
@@ -98,11 +78,9 @@ use crate::extension_traits::ManuallyDropMut;
 /// that points to a `ManuallyDrop` is required, so as to express how likely it
 /// is that memory be leaked. This can be safely achieved by using the
 /// [`ManuallyDropMut`] helper.
-impl<'out, T : 'out> From<&'out mut ManuallyDrop<T>> for Out<'out, T> {
+impl<'out, T: 'out> From<&'out mut ManuallyDrop<T>> for Out<'out, T> {
     #[inline]
-    fn from (p: &'out mut ManuallyDrop<T>)
-      -> Out<'out, T>
-    {
+    fn from(p: &'out mut ManuallyDrop<T>) -> Out<'out, T> {
         unsafe {
             // # Safety
             //
@@ -116,31 +94,27 @@ impl<'out, T : 'out> From<&'out mut ManuallyDrop<T>> for Out<'out, T> {
     }
 }
 
-impl<'out, T : 'out + ?Sized> Out<'out, T> {
+impl<'out, T: 'out + ?Sized> Out<'out, T> {
     /// Reborrows the `&out _` reference for a shorter lifetime.
     #[inline]
-    pub
-    fn reborrow<'reborrow> (self: &'reborrow mut Out<'out, T>)
-      -> Out<'reborrow, T>
+    pub fn reborrow<'reborrow>(self: &'reborrow mut Out<'out, T>) -> Out<'reborrow, T>
     where
-        'out : 'reborrow,
+        'out: 'reborrow,
     {
         Out(self.0, Default::default())
     }
 
     /// Shorthand for [`.reborrow()`][`Out::reborrow`].
     #[inline]
-    pub
-    fn r<'reborrow> (self: &'reborrow mut Out<'out, T>)
-      -> Out<'reborrow, T>
+    pub fn r<'reborrow>(self: &'reborrow mut Out<'out, T>) -> Out<'reborrow, T>
     where
-        'out : 'reborrow,
+        'out: 'reborrow,
     {
         self.reborrow()
     }
 }
 
-impl<'out, T : 'out> Out<'out, T> {
+impl<'out, T: 'out> Out<'out, T> {
     /// Write a `value` into the pointee, returning an `.assume_init()`-ed
     /// reference to it.
     ///
@@ -150,10 +124,7 @@ impl<'out, T : 'out> Out<'out, T> {
     /// initialized; it is thus sound to use that property to manually
     /// `assume_init()` it or any chunk of such items.
     #[inline]
-    pub
-    fn write (self: Out<'out, T>, value: T)
-      -> &'out mut T
-    {
+    pub fn write(self: Out<'out, T>, value: T) -> &'out mut T {
         unsafe {
             // Safety: this writes a valid (non garbage) value to the pointee
             self.0.as_ptr().write(value);
@@ -174,10 +145,7 @@ impl<'out, T : 'out> Out<'out, T> {
     ///     is thus only sound to `assume_init()` if the pointee already was
     ///     (before the call to `.replace()`).
     #[inline]
-    pub
-    fn replace (mut self: Out<'out, T>, value: T)
-      -> (MaybeUninit<T>, &'out mut T)
-    {
+    pub fn replace(mut self: Out<'out, T>, value: T) -> (MaybeUninit<T>, &'out mut T) {
         unsafe {
             // # Safety
             //
@@ -215,10 +183,7 @@ impl<'out, T : 'out> Out<'out, T> {
     ///       - otherwise, except when sound to `assume_init()`, the obtained
     ///         pointer cannot be used to read the value `: T` of the pointee!
     #[inline]
-    pub
-    fn as_mut_ptr (self: &'_ mut Out<'out, T>)
-      -> *mut T
-    {
+    pub fn as_mut_ptr(self: &'_ mut Out<'out, T>) -> *mut T {
         self.0.as_ptr()
     }
 
@@ -252,11 +217,7 @@ impl<'out, T : 'out> Out<'out, T> {
     /// };
     /// ```
     #[inline]
-    pub
-    unsafe
-    fn assume_init (mut self: Out<'out, T>)
-      -> &'out mut T
-    {
+    pub unsafe fn assume_init(mut self: Out<'out, T>) -> &'out mut T {
         &mut *self.as_mut_ptr()
     }
 
@@ -325,92 +286,67 @@ impl<'out, T : 'out> Out<'out, T> {
     /// zeroize(unsafe { at_x.as_mut_uninit() });
     /// ```
     #[inline]
-    pub
-    unsafe
-    fn as_mut_uninit (self: Out<'out, T>)
-      -> &'out mut MaybeUninit<T>
-    {
-        &mut *({self}.as_mut_ptr().cast())
+    pub unsafe fn as_mut_uninit(self: Out<'out, T>) -> &'out mut MaybeUninit<T> {
+        &mut *({ self }.as_mut_ptr().cast())
     }
 }
 
 /// This can be useful to get a `Out<'long ...>` out of a
 /// `&'short mut Out<'long ...>` by [`mem::replace`]-ing with a `Out::default()`
 /// (_e.g._, to implement an [`Iterator`]).
-impl<'out, T : 'out> Default for Out<'out, [T]> {
+impl<'out, T: 'out> Default for Out<'out, [T]> {
     #[inline]
-    fn default ()
-      -> Self
-    {
+    fn default() -> Self {
         <&mut [MaybeUninit<T>]>::into(&mut [])
     }
 }
 
-impl<'out, T : 'out> From<&'out mut [T]> for Out<'out, [T]>
+impl<'out, T: 'out> From<&'out mut [T]> for Out<'out, [T]>
 where
-    T : Copy,
+    T: Copy,
 {
     #[inline]
-    fn from (slice: &'out mut [T])
-      -> Out<'out, [T]>
-    {
-        Out(
-            slice.into(),
-            Default::default(),
-        )
+    fn from(slice: &'out mut [T]) -> Out<'out, [T]> {
+        Out(slice.into(), Default::default())
     }
 }
 
-impl<'out, T : 'out> From<&'out mut [ManuallyDrop<T>]> for Out<'out, [T]> {
+impl<'out, T: 'out> From<&'out mut [ManuallyDrop<T>]> for Out<'out, [T]> {
     #[inline]
-    fn from (slice: &'out mut [ManuallyDrop<T>])
-      -> Out<'out, [T]>
-    {
+    fn from(slice: &'out mut [ManuallyDrop<T>]) -> Out<'out, [T]> {
         unsafe {
             // # Safety
             //
             //   - The API does not allow to write `MaybeUninit::uninit()` into
             //     the pointee.
             Out(
-                ptr::NonNull::new_unchecked(
-                    slice as *mut [ManuallyDrop<T>] as *mut [T]
-                ),
+                ptr::NonNull::new_unchecked(slice as *mut [ManuallyDrop<T>] as *mut [T]),
                 Default::default(),
             )
         }
     }
 }
 
-impl<'out, T : 'out> From<&'out mut [MaybeUninit<T>]> for Out<'out, [T]> {
+impl<'out, T: 'out> From<&'out mut [MaybeUninit<T>]> for Out<'out, [T]> {
     #[inline]
-    fn from (slice: &'out mut [MaybeUninit<T>])
-      -> Out<'out, [T]>
-    {
+    fn from(slice: &'out mut [MaybeUninit<T>]) -> Out<'out, [T]> {
         unsafe {
             Out(
-                ptr::NonNull::new_unchecked(
-                    slice as *mut [MaybeUninit<T>] as *mut [T]
-                ),
+                ptr::NonNull::new_unchecked(slice as *mut [MaybeUninit<T>] as *mut [T]),
                 Default::default(),
             )
         }
     }
 }
 
-impl<'out, T : 'out> Out<'out, [T]> {
+impl<'out, T: 'out> Out<'out, [T]> {
     /// Converts a single item out reference into a `1`-long out slice.
     ///
     /// This is the `&out` version of
     /// [`slice::from_ref`] and [`slice::from_mut`].
     #[inline]
-    pub
-    fn from_out (out: Out<'out, T>)
-      -> Out<'out, [T]>
-    {
-        unsafe {
-            slice::from_mut(out.as_mut_uninit())
-                .as_out()
-        }
+    pub fn from_out(out: Out<'out, T>) -> Out<'out, [T]> {
+        unsafe { slice::from_mut(out.as_mut_uninit()).as_out() }
     }
 
     /// Obtains a read-only non-NULL and well-aligned raw pointer to a
@@ -426,10 +362,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// read-dereferencing the pointer (which implicitly `assume_init()`s it)
     /// without having ensured the soundness of such (implicit) `assume_init()`.
     #[inline]
-    pub
-    fn as_ptr (self: &'_ Self)
-      -> *const T
-    {
+    pub fn as_ptr(self: &'_ Self) -> *const T {
         self.0.as_ptr().cast()
     }
 
@@ -437,10 +370,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
     ///
     /// See [`Out::as_mut_ptr`] for more info regarding safety and guarantees.
     #[inline]
-    pub
-    fn as_mut_ptr (self: &'_ mut Self)
-      -> *mut T
-    {
+    pub fn as_mut_ptr(self: &'_ mut Self) -> *mut T {
         self.0.as_ptr().cast()
     }
 
@@ -449,11 +379,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
     ///
     /// See [`Out::as_mut_uninit`] for more info regarding safety.
     #[inline]
-    pub
-    unsafe
-    fn as_mut_uninit (self: Out<'out, [T]>)
-      -> &'out mut [MaybeUninit<T>]
-    {
+    pub unsafe fn as_mut_uninit(self: Out<'out, [T]>) -> &'out mut [MaybeUninit<T>] {
         &mut *(self.0.as_ptr() as *mut [MaybeUninit<T>])
     }
 
@@ -486,11 +412,9 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// assert_eq!(buf, b"Hello, Earth!");
     /// ```
     #[inline]
-    pub
-    fn get_out<Index> (self: Out<'out, [T]>, idx: Index)
-      -> Option<Index::Output>
+    pub fn get_out<Index>(self: Out<'out, [T]>, idx: Index) -> Option<Index::Output>
     where
-        Index : UsizeOrRange<'out, T>, // renamed for the documentation
+        Index: UsizeOrRange<'out, T>, // renamed for the documentation
     {
         macro_rules! impl_SliceIndex {(
             $($Range:ty),+ $(,)?
@@ -517,18 +441,14 @@ impl<'out, T : 'out> Out<'out, [T]> {
                 }
             )*
         )}
-        impl<'out, T : 'out> SliceIndex<'out, T> for usize {
+        impl<'out, T: 'out> SliceIndex<'out, T> for usize {
             type Output = Out<'out, T>;
 
             #[inline]
-            fn idx (self: usize, slice: Out<'out, [T]>)
-              -> Option<Out<'out, T>>
-            {
+            fn idx(self: usize, slice: Out<'out, [T]>) -> Option<Out<'out, T>> {
                 unsafe {
                     // Safety: ditto
-                    slice.as_mut_uninit()
-                        .get_mut(self)
-                        .map(Out::from)
+                    slice.as_mut_uninit().get_mut(self).map(Out::from)
                 }
             }
         }
@@ -567,25 +487,24 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// https://doc.rust-lang.org/std/primitive.slice.html#method.get_unchecked_mut)
     /// for more info about the safety of such call.
     #[inline]
-    pub
-    unsafe
-    fn get_unchecked_out<Index> (self: Out<'out, [T]>, idx: Index)
-      -> Index::Output
+    pub unsafe fn get_unchecked_out<Index>(self: Out<'out, [T]>, idx: Index) -> Index::Output
     where
-        Index : UsizeOrRange<'out, T>, // renamed for the documentation
+        Index: UsizeOrRange<'out, T>, // renamed for the documentation
     {
-        self.get_out(idx)
-            .unwrap_or_else(|| if cfg!(debug_assertions) {
+        self.get_out(idx).unwrap_or_else(|| {
+            if cfg!(debug_assertions) {
                 panic!(concat!(
                     "Attempted to index out of bounds through unchecked ",
                     "indexing (this was detected thanks to a check still ",
                     "being present in debug mode).\n",
-                    r"/!\ THIS IS A BUG AND A SOUNDNESS ISSUE /!\", "\n",
+                    r"/!\ THIS IS A BUG AND A SOUNDNESS ISSUE /!\",
+                    "\n",
                     "Please submit an issue ASAP.",
                 ));
             } else {
                 ::core::hint::unreachable_unchecked()
-            })
+            }
+        })
     }
 
     /// Downgrades the `Out<'_, [T]>` slice into a `&'_ [MaybeUninit<T>]`.
@@ -656,10 +575,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// there isn't already one: since this question is not that clear the
     /// author is very likely to create an issue themself).
     #[inline]
-    pub
-    fn as_uninit (self: Out<'out, [T]>)
-      -> &'out [MaybeUninit<T>]
-    {
+    pub fn as_uninit(self: Out<'out, [T]>) -> &'out [MaybeUninit<T>] {
         unsafe {
             // Safety: `swap_mb_uninit_and_cell` is the one considered unsound.
             &*(self.0.as_ptr() as *const [MaybeUninit<T>])
@@ -682,15 +598,9 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// calling that function to produce an ill-formed reference, even if the
     /// obtained reference is "never actually used".
     #[inline]
-    pub
-    unsafe
-    fn assume_all_init (mut self: Out<'out, [T]>) -> &'out mut [T]
-    {
+    pub unsafe fn assume_all_init(mut self: Out<'out, [T]>) -> &'out mut [T] {
         let len = self.len();
-        slice::from_raw_parts_mut(
-            self.as_mut_ptr(),
-            len,
-        )
+        slice::from_raw_parts_mut(self.as_mut_ptr(), len)
     }
 
     /// Initialize the buffer with a copy from another (already initialized)
@@ -736,13 +646,9 @@ impl<'out, T : 'out> Out<'out, [T]> {
     ///     *b"Hello, World!",
     /// );
     /// ```
-    pub
-    fn copy_from_slice (
-        mut self: Out<'out, [T]>,
-        source_slice: &'_ [T],
-    ) -> &'out mut [T]
+    pub fn copy_from_slice(mut self: Out<'out, [T]>, source_slice: &'_ [T]) -> &'out mut [T]
     where
-        T : Copy,
+        T: Copy,
     {
         unsafe {
             // # Safety
@@ -754,10 +660,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
             //     has been initialized.
             self.r()
                 .as_mut_uninit()
-                .copy_from_slice(
-                    <[MaybeUninit<T>]>::from_ref(source_slice)
-                )
-            ;
+                .copy_from_slice(<[MaybeUninit<T>]>::from_ref(source_slice));
             self.assume_all_init()
         }
     }
@@ -773,33 +676,25 @@ impl<'out, T : 'out> Out<'out, [T]> {
     /// has yielded (capped at `self.len()`), is the length of the returned
     /// buffer.
     #[inline]
-    pub
-    fn init_with (
+    pub fn init_with(
         mut self: Out<'out, [T]>,
         iterable: impl IntoIterator<Item = T>,
-    ) -> &'out mut [T]
-    {
+    ) -> &'out mut [T] {
         let len = self.len();
         let mut iter_out = self.iter_out();
-        iter_out
-            .by_ref()
-            .zip(iterable)
-            .for_each(|(at_dst, next)| { at_dst.write(next); })
-        ;
+        iter_out.by_ref().zip(iterable).for_each(|(at_dst, next)| {
+            at_dst.write(next);
+        });
         let init_count = len - iter_out.remaining().len();
         unsafe {
             // Safety: `init_count` values of the buffer have been initialized
-            self.get_unchecked_out(.. init_count)
-                .assume_all_init()
+            self.get_unchecked_out(..init_count).assume_all_init()
         }
     }
 
     /// `.reborrow().into_iter()`
     #[inline]
-    pub
-    fn iter_out<'reborrow> (self: &'reborrow mut Out<'out, [T]>)
-      -> iter::IterOut<'reborrow, T>
-    {
+    pub fn iter_out<'reborrow>(self: &'reborrow mut Out<'out, [T]>) -> iter::IterOut<'reborrow, T> {
         self.into_iter()
     }
 
@@ -810,10 +705,7 @@ impl<'out, T : 'out> Out<'out, [T]> {
     ///
     /// Panics if `idx > len`.
     #[inline]
-    pub
-    fn split_at_out (self: Out<'out, [T]>, idx: usize)
-      -> (Out<'out, [T]>, Out<'out, [T]> )
-    {
+    pub fn split_at_out(self: Out<'out, [T]>, idx: usize) -> (Out<'out, [T]>, Out<'out, [T]>) {
         let (left, right) = unsafe { self.as_mut_uninit() }.split_at_mut(idx);
         (left.as_out(), right.as_out())
     }
@@ -821,13 +713,11 @@ impl<'out, T : 'out> Out<'out, [T]> {
 
 /// `Deref` into `[MaybeUninit<T>]` to get access to the slice length related
 /// getters.
-impl<'out, T : 'out> ::core::ops::Deref for Out<'out, [T]> {
+impl<'out, T: 'out> ::core::ops::Deref for Out<'out, [T]> {
     type Target = [MaybeUninit<T>];
 
     #[inline]
-    fn deref (self: &'_ Self)
-      -> &'_ [MaybeUninit<T>]
-    {
+    fn deref(self: &'_ Self) -> &'_ [MaybeUninit<T>] {
         unsafe {
             // Safety: see `fn as_uninit`.
             &*(self.0.as_ptr() as *const [MaybeUninit<T>])
@@ -839,81 +729,65 @@ use private::{SliceIndex, SliceIndex as UsizeOrRange};
 mod private {
     use super::*;
 
-    pub
-    trait SliceIndex<'out, T> {
-        type Output : 'out;
+    pub trait SliceIndex<'out, T> {
+        type Output: 'out;
 
-        fn idx (self: Self, slice: Out<'out, [T]>)
-          -> Option<Self::Output>
-        ;
+        fn idx(self: Self, slice: Out<'out, [T]>) -> Option<Self::Output>;
     }
 }
 
 /// `&out [_]` slice iteration logic.
-pub
-mod iter {
+pub mod iter {
     use super::*;
 
     /// The value obtained when calling `.into_iter()` on a `Out<'out, [T]>`.
     ///
     /// An iterator over single value `Out<'out, T>` references.
     #[allow(missing_debug_implementations)]
-    pub
-    struct IterOut<'out, T : 'out> {
+    pub struct IterOut<'out, T: 'out> {
         slice: Out<'out, [T]>,
     }
 
-    impl<'out, T : 'out> IterOut<'out, T> {
+    impl<'out, T: 'out> IterOut<'out, T> {
         /// Extracts an `Out<[T]>` slice reference pointing to the elements not
         /// yet yielded by the iterator.
         #[inline]
-        pub
-        fn remaining (self: IterOut<'out, T>)
-          -> Out<'out, [T]>
-        {
+        pub fn remaining(self: IterOut<'out, T>) -> Out<'out, [T]> {
             self.slice
         }
     }
 
-    impl<'out, T : 'out> IntoIterator for Out<'out, [T]> {
+    impl<'out, T: 'out> IntoIterator for Out<'out, [T]> {
         type Item = Out<'out, T>;
         type IntoIter = IterOut<'out, T>;
 
-        fn into_iter (self: Out<'out, [T]>)
-          -> IterOut<'out, T>
-        {
+        fn into_iter(self: Out<'out, [T]>) -> IterOut<'out, T> {
             IterOut { slice: self }
         }
     }
 
-    impl<'out, 'inner : 'out, T : 'inner> IntoIterator
-        for &'out mut Out<'inner, [T]>
-    {
+    impl<'out, 'inner: 'out, T: 'inner> IntoIterator for &'out mut Out<'inner, [T]> {
         type Item = Out<'out, T>;
         type IntoIter = IterOut<'out, T>;
 
         #[inline]
-        fn into_iter (self: &'out mut Out<'inner, [T]>)
-          -> IterOut<'out, T>
-        {
+        fn into_iter(self: &'out mut Out<'inner, [T]>) -> IterOut<'out, T> {
             self.reborrow().into_iter()
         }
     }
 
-    impl<'out, T : 'out> Iterator for IterOut<'out, T> {
+    impl<'out, T: 'out> Iterator for IterOut<'out, T> {
         type Item = Out<'out, T>;
 
         #[inline]
-        fn next (self: &'_ mut IterOut<'out, T>)
-          -> Option<Out<'out, T>>
-        {
-            if self.slice.is_empty() { return None; }
+        fn next(self: &'_ mut IterOut<'out, T>) -> Option<Out<'out, T>> {
+            if self.slice.is_empty() {
+                return None;
+            }
             let slice = mem::replace(&mut self.slice, Out::default());
             let (first, rest) = slice.split_at_out(1);
             self.slice = rest;
-            Some(unsafe {
-                first.get_unchecked_out(0)
-            })
+            Some(unsafe { first.get_unchecked_out(0) })
         }
     }
 }
