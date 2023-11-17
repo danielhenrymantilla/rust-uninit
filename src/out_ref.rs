@@ -657,6 +657,38 @@ impl<'out, T: 'out> Out<'out, [T]> {
         let (left, right) = unsafe { self.as_mut_uninit() }.split_at_mut(idx);
         (left.as_out(), right.as_out())
     }
+
+    /// Constructs an `&out [T]` from a `*mut T` and length.
+    ///
+    /// # Safety
+    /// - `data` must be [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+    ///   and it must be properly aligned.
+    /// - The memory referenced by the returned `Out` must not be accessed through any other pointer
+    ///   (not derived from the return value) for the duration of lifetime `'a`.
+    ///   Both read and write accesses are forbidden.
+    /// - The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
+    ///   and adding that size to `data` must not "wrap around" the address space.
+    ///   See the safety documentation of [`<*mut T>::offset`].
+    ///
+    /// [valid]: core::ptr#safety
+    /// [`NonNull::dangling()`]: core::ptr::NonNull::dangling
+    /// [`<*mut T>::offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.offset
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use uninit::out_ref::Out;
+    ///
+    /// // Writes the values 0,1,2,...,len-1 to `data`
+    /// #[no_mangle]
+    /// pub unsafe extern "C" fn write_increasing(data: *mut u8, len: usize) {
+    ///     Out::slice_from_raw_parts(data, len).init_with(0..);
+    /// }
+    /// ```
+    pub unsafe fn slice_from_raw_parts(data: *mut T, len: usize) -> Out<'out, [T]> {
+        let mu_slice: &mut [MaybeUninit<T>] = slice::from_raw_parts_mut(data.cast(), len);
+        mu_slice.into()
+    }
 }
 
 /// `Deref` into `[MaybeUninit<T>]` to get access to the slice length related
