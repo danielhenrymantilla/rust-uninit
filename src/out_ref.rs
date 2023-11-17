@@ -689,6 +689,23 @@ impl<'out, T: 'out> Out<'out, [T]> {
         let mu_slice: &mut [MaybeUninit<T>] = slice::from_raw_parts_mut(data.cast(), len);
         mu_slice.into()
     }
+
+    /// Constructs an `&out [T]` with a zero length.
+    ///
+    /// Like the expression `&mut []`, the returned value may point
+    /// to dangling memory that is aligned for `T`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use uninit::out_ref::Out;
+    /// let x: Out<[u32]> = Out::empty();
+    /// assert!(x.is_empty());
+    /// ```
+    pub fn empty() -> Out<'static, [T]> {
+        let data: &mut [ManuallyDrop<T>] = &mut [];
+        data.into()
+    }
 }
 
 /// `Deref` into `[MaybeUninit<T>]` to get access to the slice length related
