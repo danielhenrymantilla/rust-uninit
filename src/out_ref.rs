@@ -1,6 +1,9 @@
 //! `&out _` references in stable Rust!
 
-use crate::{extension_traits::AsOut, AsMaybeUninit};
+use crate::{
+    extension_traits::{AsOut, MaybeUninitTranspose},
+    AsMaybeUninit,
+};
 use ::core::{
     mem::{self, ManuallyDrop, MaybeUninit},
     slice,
@@ -118,6 +121,59 @@ impl<'out, T: 'out> From<&'out mut [MaybeUninit<T>]> for Out<'out, [T]> {
                 PhantomData,
             )
         }
+    }
+}
+
+#[cfg(feature = "const_generics")]
+impl<'out, T: 'out, const N: usize> From<Out<'out, [T; N]>> for Out<'out, [T]> {
+    /// Converts from `&out [T; N]` to `&out [T]`.
+    ///
+    /// # Example
+    /// ```
+    /// use uninit::out_ref::Out;
+    ///
+    /// let mut data = [1,2,3];
+    ///
+    /// let mut x: Out<[i32; 3]> = Out::from(&mut data);
+    /// let mut y: Out<[i32]> = x.into();
+    /// y.init_with(5..);
+    ///
+    /// assert_eq!(data, [5, 6, 7]);
+    /// ```
+    #[inline]
+    fn from(value: Out<'out, [T; N]>) -> Self {
+        // SAFETY: immediate conversion to `Out` means uninit can't be written.
+        let slice: &mut [MaybeUninit<T>] = unsafe { value.as_mut_uninit().transpose() };
+        slice.into()
+    }
+}
+
+#[cfg(feature = "const_generics")]
+impl<'out, T: 'out, const N: usize> TryFrom<Out<'out, [T]>> for Out<'out, [T; N]> {
+    type Error = core::array::TryFromSliceError;
+
+    /// Tries to create a `&out [T; N]` from a `&out [T]`.
+    ///
+    /// Succeeds if the length of the `&out [_]` is equal to `N`.
+    ///
+    /// # Example
+    /// ```
+    /// use uninit::prelude::Out;
+    ///
+    /// let mut data = [1, 2, 3];
+    /// let mut out_slice: Out<[i32]> = Out::from(&mut data).into();
+    ///
+    /// assert!(Out::<[i32; 2]>::try_from(out_slice.r()).is_err());
+    /// assert!(Out::<[i32; 4]>::try_from(out_slice.r()).is_err());
+    /// let out_array: Out<[i32; 3]> = out_slice.try_into().unwrap();
+    /// out_array.write([4, 5, 6]);
+    ///
+    /// assert_eq!(data, [4, 5, 6]);
+    /// ```
+    fn try_from(value: Out<'out, [T]>) -> Result<Self, Self::Error> {
+        // SAFETY: immediate conversion to `Out` means uninit can't be written.
+        let array: &mut [MaybeUninit<T>; N] = unsafe { value.as_mut_uninit() }.try_into()?;
+        Ok(array.transpose().into())
     }
 }
 

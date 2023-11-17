@@ -1,6 +1,7 @@
 use_prelude!();
 
 use ::core::mem::ManuallyDrop;
+use crate::extension_traits::MaybeUninitTranspose;
 
 /// Extension trait to convert a `&mut _` into a `&out _` by calling
 /// `.as_out()` on it.
@@ -136,6 +137,14 @@ const _: () = {
 
 #[cfg(feature = "const_generics")]
 const _: () = {
+    #[cfg_attr(feature = "better-docs", doc(cfg(feature = "const_generics")))]
+    impl<T, const N: usize> AsOut<[T]> for MaybeUninit<[T; N]> {
+        #[inline]
+        fn as_out<'out>(self: &'out mut Self) -> Out<'out, [T]> {
+            From::from(&mut self.transpose()[..])
+        }
+    }
+
     #[cfg_attr(feature = "better-docs", doc(cfg(feature = "const_generics")))]
     impl<T, const N: usize> AsOut<[T]> for [MaybeUninit<T>; N] {
         #[inline]
