@@ -339,13 +339,13 @@ where
         unsafe { T::raw_mut_as_uninit(self.0.as_ptr()) }
     }
 
-    /// Downgrades the `Out<'_, [T]>` slice into a `&'_ [MaybeUninit<T>]`.
+    /// Downgrades the `Out<'_, T>` value into a `&MaybeUninit`.
     ///
-    /// This leads to a read-only<sup>1</sup> "unreadable" slice which is thus
+    /// This leads to a read-only<sup>1</sup> "unreadable" reference which is thus
     /// only useful for accessing `&'_ []` metadata, mainly the length of the
     /// slice.
     ///
-    /// In practice, calling this function explicitely is not even needed given
+    /// In practice, calling this function explicitly is not even needed given
     /// that `Out<'_, [T]> : Deref<Target = [MaybeUninit<T>]`, so one can do:
     ///
     /// ```rust
@@ -353,7 +353,7 @@ where
     ///
     /// let mut backing_array = uninit_array![_; 42];
     /// let buf: Out<'_, [u8]> = backing_array.as_out();
-    /// assert_eq!(buf.len(), 42); // no need to `.r().as_uninit()`
+    /// assert_eq!(buf.len(), 42); // no need to `r().as_ref_uninit()`
     /// ```
     ///
     /// <sup>1</sup> <small>Unless Interior Mutability is involved;
@@ -386,7 +386,7 @@ where
     /// ```rust,ignore
     /// let mut x = [Cell::new(42)];
     /// let at_mb_uninit_cell: &'_ MaybeUninit<Cell<u8>> =
-    ///     &x.as_out().as_uninit()[0]
+    ///     &x.as_out().as_ref_uninit()[0]
     /// ;
     /// swap_mb_uninit_and_cell(at_mb_uninit_cell)
     ///     .set(MaybeUninit::uninit()) // UB!
@@ -407,7 +407,7 @@ where
     /// there isn't already one: since this question is not that clear the
     /// author is very likely to create an issue themself).
     #[inline]
-    pub fn as_uninit(self: Out<'out, T>) -> &'out T::Uninit {
+    pub fn as_ref_uninit(self: Out<'out, T>) -> &'out T::Uninit {
         // SAFETY: sound as guaranteed by struct invariants
         unsafe { T::raw_as_uninit(self.0.as_ptr()) }
     }
