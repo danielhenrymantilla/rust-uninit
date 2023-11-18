@@ -10,6 +10,7 @@
     missing_docs,
     missing_copy_implementations,
     missing_debug_implementations,
+    unsafe_op_in_unsafe_fn,
     unused_must_use
 )]
 #![no_std]

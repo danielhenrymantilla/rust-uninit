@@ -189,7 +189,10 @@ where
     /// - `raw` does not need to point to an initialized `T`
     /// - It must be sound to write an initialized `T` without dropping
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Out(NonNull::new_unchecked(raw), PhantomData)
+        // SAFETY:
+        // - `raw` is non-null (because it is dereferencable) as promised by the caller.
+        // - `raw` satisfies the invarianst for the field as promised by the caller.
+        unsafe { Out(NonNull::new_unchecked(raw), PhantomData) }
     }
 
     /// Reborrows the `&out _` reference for a shorter lifetime.
@@ -262,7 +265,10 @@ where
     /// ```
     #[inline]
     pub unsafe fn assume_init(mut self: Out<'out, T>) -> &'out mut T {
-        &mut *self.as_mut_ptr()
+        // SAFETY:
+        // - `.0` is dereferencable for `'out` as an invariant of the type.
+        // - The caller has promised that the pointee is initialized.
+        unsafe { &mut *self.as_mut_ptr() }
     }
 
     /// _Upgrades_ the `&out _`  (write-valid-values-only) reference to a
@@ -603,7 +609,8 @@ impl<'out, T: 'out> Out<'out, [T]> {
                     "Please submit an issue ASAP.",
                 ));
             } else {
-                ::core::hint::unreachable_unchecked()
+                // SAFETY: unreachable as promised by the caller
+                unsafe { ::core::hint::unreachable_unchecked() }
             }
         })
     }
@@ -723,6 +730,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// - The memory referenced by the returned `Out` must not be accessed through any other pointer
     ///   (not derived from the return value) for the duration of lifetime `'a`.
     ///   Both read and write accesses are forbidden.
+    /// - It must be valid to write aligned elements of `T` into `data`.
     /// - The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
     ///   and adding that size to `data` must not "wrap around" the address space.
     ///   See the safety documentation of [`<*mut T>::offset`].
@@ -743,7 +751,12 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// }
     /// ```
     pub unsafe fn slice_from_raw_parts(data: *mut T, len: usize) -> Out<'out, [T]> {
-        let mu_slice: &mut [MaybeUninit<T>] = slice::from_raw_parts_mut(data.cast(), len);
+        // SAFETY:
+        // - `data` is mutably dereferencable for `len` elements as promised by the caller.
+        // - `MaybeUninit<T>` has the same layout as `T`.
+        // - The elements can be overwritten with any valid `T` as promised by the caller.
+        let mu_slice: &mut [MaybeUninit<T>] =
+            unsafe { slice::from_raw_parts_mut(data.cast(), len) };
         mu_slice.into()
     }
 

@@ -59,7 +59,6 @@ pub trait MaybeUninitExt {
     fn from_ref(init_ref: &'_ Self::T) -> &'_ Self;
 }
 
-#[allow(unused_unsafe)]
 impl<T> MaybeUninitExt for MaybeUninit<T> {
     type T = T;
 
@@ -104,7 +103,6 @@ impl<T> MaybeUninitExt for MaybeUninit<T> {
     }
 }
 
-#[allow(unused_unsafe)]
 impl<T> MaybeUninitExt for [MaybeUninit<T>] {
     type T = [T];
 

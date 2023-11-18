@@ -76,17 +76,20 @@ unsafe impl<T> AsMaybeUninit for T {
 
     #[inline]
     unsafe fn as_mut_uninit(&mut self) -> &mut Self::Uninit {
-        &mut *(self as *mut T).cast()
+        // SAFETY: Uninit will not be written to the output as promised by the caller.
+        unsafe { &mut *(self as *mut T).cast() }
     }
 
     #[inline]
     unsafe fn raw_as_uninit<'a>(raw: *const Self) -> &'a Self::Uninit {
-        &*(raw as *const MaybeUninit<T>)
+        // SAFETY: The pointer is aligned and readable for `'a` as promised by the caller.
+        unsafe { &*(raw as *const MaybeUninit<T>) }
     }
 
     #[inline]
     unsafe fn raw_mut_as_uninit<'a>(raw: *mut Self) -> &'a mut Self::Uninit {
-        &mut *(raw as *mut MaybeUninit<T>)
+        // SAFETY: The pointer is aligned and read-writeable for `'a` as promised by the caller.
+        unsafe { &mut *(raw as *mut MaybeUninit<T>) }
     }
 }
 
@@ -107,16 +110,19 @@ unsafe impl<T> AsMaybeUninit for [T] {
 
     #[inline]
     unsafe fn as_mut_uninit(&mut self) -> &mut Self::Uninit {
-        &mut *(self as *mut [T] as *mut [MaybeUninit<T>])
+        // SAFETY: Uninit will not be written to the output as promised by the caller.
+        unsafe { &mut *(self as *mut [T] as *mut [MaybeUninit<T>]) }
     }
 
     #[inline]
     unsafe fn raw_as_uninit<'a>(raw: *const Self) -> &'a Self::Uninit {
-        &*(raw as *const [MaybeUninit<T>])
+        // SAFETY: The pointer is aligned and readable for `'a` as promised by the caller.
+        unsafe { &*(raw as *const [MaybeUninit<T>]) }
     }
 
     #[inline]
     unsafe fn raw_mut_as_uninit<'a>(raw: *mut Self) -> &'a mut Self::Uninit {
-        &mut *(raw as *mut [MaybeUninit<T>])
+        // SAFETY: The pointer is aligned and read-writeable for `'a` as promised by the caller.
+        unsafe { &mut *(raw as *mut [MaybeUninit<T>]) }
     }
 }

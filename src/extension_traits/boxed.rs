@@ -1,4 +1,5 @@
-use_prelude!(); cfg_alloc! {
+use_prelude!();
+cfg_alloc! {
 
 mod private {
     use_prelude!();
@@ -189,15 +190,19 @@ impl<T> BoxAssumeInit for Box<[MaybeUninit<T>]> {
     ///   - This has the same safety requirements as
     ///     [`.assume_init()`][`MaybeUninit::assume_init`].
     #[inline]
-    unsafe
-    fn assume_init (self: Box<[MaybeUninit<T>]>)
+    unsafe fn assume_init (self: Box<[MaybeUninit<T>]>)
       -> Box<[T]>
     {
         let len = self.len();
         let ptr = Box::leak(self).as_mut_ptr();
-        Box::from_raw(slice::from_raw_parts_mut(
-            ptr.cast(), len,
-        ))
+        // SAFETY:
+        // - `T` and `MaybeUninit<T>` have the same layout
+        // - The `T` are initialized as promised by the caller
+        unsafe {
+            Box::from_raw(slice::from_raw_parts_mut(
+                ptr.cast(), len,
+            ))
+        }
     }
 }
 
@@ -211,11 +216,15 @@ impl<T> BoxAssumeInit for Box<MaybeUninit<T>> {
     ///   - This has the same safety requirements as
     ///     [`.assume_init()`][`MaybeUninit::assume_init`].
     #[inline]
-    unsafe
-    fn assume_init (self: Box<MaybeUninit<T>>)
+    unsafe fn assume_init (self: Box<MaybeUninit<T>>)
       -> Box<T>
     {
-        Box::from_raw(Box::into_raw(self).cast())
+        // SAFETY:
+        // - `T` and `MaybeUninit<T>` have the same layout
+        // - The `T` are initialized as promised by the caller
+        unsafe {
+            Box::from_raw(Box::into_raw(self).cast())
+        }
     }
 }
 
@@ -234,8 +243,7 @@ pub
 trait BoxAssumeInit : private2::Sealed {
     type Ret : ?Sized;
 
-    unsafe
-    fn assume_init (self: Self)
+    unsafe fn assume_init (self: Self)
       -> Box<Self::Ret>
     ;
 }
