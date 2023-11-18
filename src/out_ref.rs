@@ -786,6 +786,29 @@ impl<'out, T: 'out, const N: usize> Out<'out, [T; N]> {
     pub fn len(&self) -> usize {
         N
     }
+
+    /// Converts from `Out<[T; N]>` to `Out<[T]>` with a dynamic length.
+    /// 
+    /// At the moment, more functionality is available for `Out<[T; N]>`
+    /// which `Out<[T; N]>` doesn't implicitly have access to.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use uninit::out_ref::Out;
+    ///
+    /// let mut data: MaybeUninit<[i32; 3]> = MaybeUninit::uninit();
+    /// let mut out = Out::from(&mut data);
+    /// // `r[eborrow]()` so `out` isn't consumed.
+    /// assert_eq!(out.r().as_slice_out().init_with(1..), &[1, 2, 3]);
+    /// assert_eq!(out.as_slice_out().init_with(10..), &[10, 11, 12]);
+    /// // SAFETY: fully initialized
+    /// assert_eq!(unsafe { data.assume_init() }, [10, 11, 12]);
+    /// ```
+    pub fn as_slice_out(self) -> Out<'out, [T]> {
+        self.into()
+    }
 }
 
 /// `Deref` into `[MaybeUninit<T>]` to get access to the slice length related
