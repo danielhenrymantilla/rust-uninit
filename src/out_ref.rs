@@ -72,7 +72,7 @@ where
 {
     #[inline]
     fn from(p: &'out mut T) -> Out<'out, T> {
-        // SAFETY: Uninit cannot be written into as an invariant of `OutInner`
+        // SAFETY: Uninit cannot be written into as an invariant of the module
         Out(NonNull::from(p), PhantomData)
     }
 }
@@ -90,7 +90,7 @@ where
 {
     #[inline]
     fn from(p: &'out mut ManuallyDrop<T>) -> Out<'out, T> {
-        // SAFETY: Uninit cannot be written into as an invariant of `OutInner`
+        // SAFETY: Uninit cannot be written into as an invariant of the module
         Out(NonNull::from(&mut **p), PhantomData)
     }
 }
@@ -99,7 +99,7 @@ impl<'out, T: 'out> From<&'out mut [ManuallyDrop<T>]> for Out<'out, [T]> {
     #[inline]
     fn from(slice: &'out mut [ManuallyDrop<T>]) -> Out<'out, [T]> {
         // SAFETY:
-        // - Uninit cannot be written into as an invariant of `OutInner`
+        // - Uninit cannot be written into as an invariant of the module
         // - `[ManuallyDrop<T>]` has the same layout as `[MaybeUninit<T>]`
         // - References are always non-null.
         unsafe {
