@@ -134,7 +134,6 @@ pub trait MaybeUninitTranspose {
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<T, const N: usize> MaybeUninitTranspose for [MaybeUninit<T>; N] {
     type Transposed = MaybeUninit<[T; N]>;
 
@@ -156,7 +155,6 @@ impl<T, const N: usize> MaybeUninitTranspose for [MaybeUninit<T>; N] {
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<T, const N: usize> MaybeUninitTranspose for MaybeUninit<[T; N]> {
     type Transposed = [MaybeUninit<T>; N];
 
@@ -178,7 +176,6 @@ impl<T, const N: usize> MaybeUninitTranspose for MaybeUninit<[T; N]> {
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a [MaybeUninit<T>; N] {
     type Transposed = &'a MaybeUninit<[T; N]>;
 
@@ -195,7 +192,6 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a [MaybeUninit<T>; N]
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a MaybeUninit<[T; N]> {
     type Transposed = &'a [MaybeUninit<T>; N];
 
@@ -212,7 +208,6 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a MaybeUninit<[T; N]>
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut [MaybeUninit<T>; N] {
     type Transposed = &'a mut MaybeUninit<[T; N]>;
 
@@ -229,7 +224,6 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut [MaybeUninit<T>
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut MaybeUninit<[T; N]> {
     type Transposed = &'a mut [MaybeUninit<T>; N];
 

@@ -22,7 +22,7 @@ license = "Zlib OR MIT OR Apache-2.0"
 extension-traits.version = "1.0.1"
 
 [features]
-default = ["std", "const_generics"]
+default = ["std"]
 
 std = ["alloc"]
 alloc = []
@@ -30,7 +30,6 @@ alloc = []
 better-docs = ["nightly"]
 nightly = []
 specialization = ["nightly"]
-const_generics = []
 
 chain = []
 

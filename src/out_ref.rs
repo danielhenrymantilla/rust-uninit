@@ -125,7 +125,6 @@ impl<'out, T: 'out> From<&'out mut [MaybeUninit<T>]> for Out<'out, [T]> {
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'out, T: 'out, const N: usize> From<Out<'out, [T; N]>> for Out<'out, [T]> {
     /// Converts from `&out [T; N]` to `&out [T]`.
     ///
@@ -149,7 +148,6 @@ impl<'out, T: 'out, const N: usize> From<Out<'out, [T; N]>> for Out<'out, [T]> {
     }
 }
 
-#[cfg(feature = "const_generics")]
 impl<'out, T: 'out, const N: usize> TryFrom<Out<'out, [T]>> for Out<'out, [T; N]> {
     type Error = core::array::TryFromSliceError;
 
