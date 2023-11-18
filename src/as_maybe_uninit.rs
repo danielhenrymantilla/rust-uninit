@@ -19,6 +19,12 @@ pub unsafe trait AsMaybeUninit {
     /// This type in its maybe-uninitialized form.
     type Uninit: ?Sized + MaybeUninitExt<T = Self>;
 
+    /// The largest `Sized` element in `Self`, used to check for the absence
+    /// of [drop glue][core::mem::needs_drop] via a `Copy` bound.
+    ///
+    /// For `Self: Sized`, this equals `Self`, but for `[T]` it is `T`.
+    type SizedPart: Sized;
+
     /// Converts a `&self` to its maybe-initialized equivalent.
     fn as_ref_uninit(&self) -> &Self::Uninit;
 
@@ -61,6 +67,7 @@ pub unsafe trait AsMaybeUninit {
 // - `as_ref_uninit` and `as_mut_uninit` return the same address as their input.
 unsafe impl<T> AsMaybeUninit for T {
     type Uninit = MaybeUninit<T>;
+    type SizedPart = T;
 
     #[inline]
     fn as_ref_uninit(&self) -> &Self::Uninit {
@@ -91,6 +98,7 @@ unsafe impl<T> AsMaybeUninit for T {
 // - `as_ref_uninit` and `as_mut_uninit` return the same address as their input.
 unsafe impl<T> AsMaybeUninit for [T] {
     type Uninit = [MaybeUninit<T>];
+    type SizedPart = T;
 
     #[inline]
     fn as_ref_uninit(&self) -> &Self::Uninit {

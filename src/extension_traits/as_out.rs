@@ -1,7 +1,7 @@
 use_prelude!();
 
-use ::core::mem::ManuallyDrop;
 use crate::extension_traits::MaybeUninitTranspose;
+use ::core::mem::ManuallyDrop;
 
 /// Extension trait to convert a `&mut _` into a `&out _` by calling
 /// `.as_out()` on it.
@@ -16,7 +16,7 @@ use crate::extension_traits::MaybeUninitTranspose;
 /// This is by design. Indeed, [`Out`] references do not call the destructor
 /// of the overwritten element (since it may not be initialized).
 /// This could cause memory leaks when there is an initialized element with
-/// [drop glue][`core::mem::needs_drop`].
+/// [drop glue][core::mem::needs_drop].
 ///
 /// To solve this limitation, one must explicitly call
 /// [`.manually_drop_mut()`][`crate::ManuallyDropMut::manually_drop_mut`]
@@ -72,15 +72,11 @@ where
 {
     #[inline]
     fn as_out<'out>(self: &'out mut [T]) -> Out<'out, [T]> {
-        // This appears to be necessary due to a Rust bug?
-        // For some reason Rust isn't able to infer that `[T]: Copy`,
-        // and inserting that bound creates a conflict with
-        // `impl<T> AsOut<T> for T`.
-        unsafe { Out::from_raw(self) }
+        self.into()
     }
 }
 
-impl<T> AsOut<T> for ManuallyDrop<T> {
+impl<T: ?Sized> AsOut<T> for ManuallyDrop<T> {
     #[inline]
     fn as_out<'out>(self: &'out mut ManuallyDrop<T>) -> Out<'out, T> {
         self.into()
@@ -156,7 +152,7 @@ const _: () = {
     #[cfg_attr(feature = "better-docs", doc(cfg(feature = "const_generics")))]
     impl<T, const N: usize> AsOut<[T]> for [T; N]
     where
-        [T]: Copy,
+        T: Copy,
     {
         #[inline]
         fn as_out<'out>(self: &'out mut Self) -> Out<'out, [T]> {

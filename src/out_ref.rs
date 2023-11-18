@@ -67,7 +67,8 @@ impl<'out, T: 'out> From<&'out mut MaybeUninit<T>> for Out<'out, T> {
 
 impl<'out, T> From<&'out mut T> for Out<'out, T>
 where
-    T: ?Sized + Copy + 'out, // prevent accidentally leaking memory
+    T: ?Sized + AsMaybeUninit + 'out,
+    T::SizedPart: Copy, // prevent accidentally leaking memory
 {
     #[inline]
     fn from(p: &'out mut T) -> Out<'out, T> {
