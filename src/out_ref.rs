@@ -1,4 +1,69 @@
 //! `&out _` references in stable Rust!
+//!
+//! An [`Out<'a, T>`] (`&out T`) is a _write-only reference_.
+//!
+//! Its name is inspired by [`out` parameters][out-csharp] from various languages.
+//! It functions like `&'a mut MaybeUninit<T>`, except:
+//!
+//! - It can be safely constructed from a `&mut T`, since its API forbids writing `MaybeUninit::uninit()`.
+//!   - To avoid accidental memory leaks, `T` must be either `Copy` or wrapped in `ManuallyDrop`.
+//! - It supports `Out<[T]>`, whereas `MaybeUninit<[T]>` is currently invalid
+//!   and must be written as `[MaybeUninit<T>]`.
+//!
+//! Much like `&mut MaybeUninit`, you can safely [`write`][crate::out_ref::Out::write]
+//! to an `Out` and get a `&mut T` back - also without running any drop glue.
+//! Since it's proven to be initialized, you can read and write through that reference
+//! without issue.
+//!
+//! ## Interior Mutability
+//!
+//! The whole design of `Out` references is to forbid any non-unsafe API
+//! that would allow writing `MaybeUninit::uninit()` garbage into the
+//! pointee. So, for instance, this crate does not offer any API like:
+//!
+//! ```rust
+//! use ::core::{cell::Cell, mem::MaybeUninit};
+//!
+//! // /!\ This is UNSOUND when combined with the `::uninit` crate!
+//! fn swap_mb_uninit_and_cell<T> (
+//!     p: &'_ MaybeUninit<Cell<T>>,
+//! ) -> &'_ Cell<MaybeUninit<T>>
+//! {
+//!     unsafe {
+//!         // Safety: both `Cell` and `MaybeUninit` are `#[repr(transparent)]`
+//!         ::core::mem::transmute(p)
+//!     }
+//! }
+//! ```
+//!
+//! Indeed, if both such non-`unsafe` API and the `uninit` crate were
+//! present, then one could trigger UB with:
+//!
+//! ```rust,ignore
+//! let mut x = [Cell::new(42)];
+//! let at_mb_uninit_cell: &'_ MaybeUninit<Cell<u8>> =
+//!     &x.as_out().as_ref_uninit()[0]
+//! ;
+//! swap_mb_uninit_and_cell(at_mb_uninit_cell)
+//!     .set(MaybeUninit::uninit()) // UB!
+//! ;
+//! ```
+//!
+//! The author of the crate believes that such UB is the responsibility of
+//! the one who defined `swap_mb_uninit_and_cell`, and that in general that
+//! function is unsound: **`MaybeUninit`-ness and interior mutability do
+//! not commute!**
+//!
+//!   - the `Safety` annotation in the given example only justifies that
+//!     it is not breaking any layout-based validity invariants,
+//!     but it is actually impossible to semantically prove that it is safe
+//!     for these properties to commute.
+//!
+//! If you are strongly convinced of the opposite, please file an issue (if
+//! there isn't already one: since this question is not that clear the
+//! author is very likely to create an issue themself).
+//!
+//! [csharp-out]: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters#out-parameter-modifier
 
 use crate::{
     extension_traits::{AsOut, MaybeUninitTranspose},
@@ -10,12 +75,9 @@ use ::core::{
 };
 use core::{marker::PhantomData, ptr::NonNull};
 
-/// Wrapper expressing the semantics of `&out T` references
+/// A write-only reference to a maybe-uninitialized `T`
 ///
-/// In other words, this has the semantics of `&'out mut MaybeUninit<T>` but
-/// for the ability to write garbage (`MaybeUninit::uninit()`) into it
-/// (else [coercing `&mut T` to `&out T = Out<T>` would be
-/// unsound][`Out::as_mut_uninit`]).
+/// See the [module][crate::out_ref] documentation for more details.
 ///
 /// This means that the reference may point to uninitialized memory (or not),
 /// and thus that writes to the pointee will not call the `.drop()` destructor.
@@ -341,11 +403,7 @@ where
 
     /// Downgrades the `Out<'_, T>` value into a `&MaybeUninit`.
     ///
-    /// This leads to a read-only<sup>1</sup> "unreadable" reference which is thus
-    /// only useful for accessing `&'_ []` metadata, mainly the length of the
-    /// slice.
-    ///
-    /// In practice, calling this function explicitly is not even needed given
+    /// In practice, calling this function explicitly is rarely needed given
     /// that `Out<'_, [T]> : Deref<Target = [MaybeUninit<T>]`, so one can do:
     ///
     /// ```rust
@@ -355,57 +413,6 @@ where
     /// let buf: Out<'_, [u8]> = backing_array.as_out();
     /// assert_eq!(buf.len(), 42); // no need to `r().as_ref_uninit()`
     /// ```
-    ///
-    /// <sup>1</sup> <small>Unless Interior Mutability is involved;
-    /// speaking of which:</small>
-    ///
-    /// # Interior Mutability
-    ///
-    /// The whole design of `Out` references is to forbid any non-unsafe API
-    /// that would allow writing `MaybeUninit::uninit()` garbage into the
-    /// pointee. So, for instance, this crate does not offer any API like:
-    ///
-    /// ```rust
-    /// use ::core::{cell::Cell, mem::MaybeUninit};
-    ///
-    /// // /!\ This is UNSOUND when combined with the `::uninit` crate!
-    /// fn swap_mb_uninit_and_cell<T> (
-    ///     p: &'_ MaybeUninit<Cell<T>>,
-    /// ) -> &'_ Cell<MaybeUninit<T>>
-    /// {
-    ///     unsafe {
-    ///         // Safety: both `Cell` and `MaybeUninit` are `#[repr(transparent)]`
-    ///         ::core::mem::transmute(p)
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Indeed, if both such non-`unsafe` API and the `uninit` crate were
-    /// present, then one could trigger UB with:
-    ///
-    /// ```rust,ignore
-    /// let mut x = [Cell::new(42)];
-    /// let at_mb_uninit_cell: &'_ MaybeUninit<Cell<u8>> =
-    ///     &x.as_out().as_ref_uninit()[0]
-    /// ;
-    /// swap_mb_uninit_and_cell(at_mb_uninit_cell)
-    ///     .set(MaybeUninit::uninit()) // UB!
-    /// ;
-    /// ```
-    ///
-    /// The author of the crate believes that such UB is the responsibility of
-    /// the one who defined `swap_mb_uninit_and_cell`, and that in general that
-    /// function is unsound: **`MaybeUninit`-ness and interior mutability do
-    /// not commute!**
-    ///
-    ///   - the `Safety` annotation in the given example only justifies that
-    ///     it is not breaking any layout-based validity invariants,
-    ///     but it is actually impossible to semantically prove that it is safe
-    ///     for these properties to commute.
-    ///
-    /// If you are strongly convinced of the opposite, please file an issue (if
-    /// there isn't already one: since this question is not that clear the
-    /// author is very likely to create an issue themself).
     #[inline]
     pub fn as_ref_uninit(self: Out<'out, T>) -> &'out T::Uninit {
         // SAFETY: sound as guaranteed by struct invariants
@@ -417,11 +424,54 @@ impl<'out, T: 'out> Out<'out, T> {
     /// Write a `value` into the pointee, returning an `.assume_init()`-ed
     /// reference to it.
     ///
+    /// This overwrites any previous value without dropping it,
+    /// so be careful not to use this twice unless you want to skip running the destructor.
+    /// This also returns a mutable reference to the (now safely initialized) contents of self.
+    /// The return value behaves like any other mutable reference would,
+    /// so assigning a new value to it will drop the old content.
+    ///
     /// # Guarantees (that `unsafe` code may rely on)
     ///
     /// After the function returns, the pointee is guaranteed to have been
     /// initialized; it is thus sound to use that property to manually
     /// `assume_init()` it or any chunk of such items.
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```
+    /// use uninit::prelude::{AsOut, Out};
+    /// use std::mem::MaybeUninit;
+    /// let mut storage = MaybeUninit::<Vec<u8>>::uninit();
+    ///
+    /// let mut out_ref: Out<Vec<u8>> = storage.as_out();
+    /// {
+    ///     let hello = out_ref.write((&b"Hello, world!").to_vec());
+    ///     // Setting hello does not leak prior allocations, but drops them
+    ///     *hello = (&b"Hello").to_vec();
+    ///     hello[0] = 'h' as u8;
+    /// }
+    /// // x is initialized now:
+    /// let s = unsafe { storage.assume_init() };
+    /// assert_eq!(b"hello", s.as_slice());
+    /// ```
+    ///
+    /// This usage of the method causes a leak:
+    ///
+    /// ```
+    /// use uninit::prelude::{AsOut, Out};
+    /// use std::mem::MaybeUninit;
+    /// let mut storage = MaybeUninit::<String>::uninit();
+    /// let mut out_ref: Out<String> = storage.as_out();
+    ///
+    /// // reborrow to call multiple mutating methods
+    /// out_ref.r().write("Hello".to_string());
+    /// // This leaks the contained string:
+    /// out_ref.write("hello".to_string());
+    /// // storage is initialized now:
+    /// assert_eq!(&unsafe { storage.assume_init() }, "hello");
+    /// ```
     #[inline]
     pub fn write(self: Out<'out, T>, value: T) -> &'out mut T {
         unsafe {
@@ -788,12 +838,12 @@ impl<'out, T: 'out, const N: usize> Out<'out, [T; N]> {
     }
 
     /// Converts from `Out<[T; N]>` to `Out<[T]>` with a dynamic length.
-    /// 
+    ///
     /// At the moment, more functionality is available for `Out<[T; N]>`
     /// which `Out<[T; N]>` doesn't implicitly have access to.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use std::mem::MaybeUninit;
     /// use uninit::out_ref::Out;
