@@ -776,6 +776,18 @@ impl<'out, T: 'out> Out<'out, [T]> {
     }
 }
 
+impl<'out, T: 'out, const N: usize> Out<'out, [T; N]> {
+    /// Returns true this `&out [T; N]` is empty.
+    pub fn is_empty(&self) -> bool {
+        N == 0
+    }
+
+    /// Returns the number of elements in the array.
+    pub fn len(&self) -> usize {
+        N
+    }
+}
+
 /// `Deref` into `[MaybeUninit<T>]` to get access to the slice length related
 /// getters.
 impl<'out, T: 'out> ::core::ops::Deref for Out<'out, [T]> {
