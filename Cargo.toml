@@ -6,7 +6,7 @@ authors = [
     "Alyssa Haroldsen <kupiakos@gmail.com>",
 ]
 edition = "2021"
-
+rust-version = "1.56"
 documentation = "https://docs.rs/uninit"
 homepage = "https://crates.io/crates/uninit"
 repository = "https://github.com/danielhenrymantilla/rust-uninit"
