@@ -198,7 +198,7 @@ impl<'out, T: 'out, const N: usize> From<Out<'out, [T; N]>> for Out<'out, [T]> {
     ///
     /// let mut x: Out<[i32; 3]> = Out::from(&mut data);
     /// let mut y: Out<[i32]> = x.into();
-    /// y.init_with(5..);
+    /// y.fill_with_iter(5..);
     ///
     /// assert_eq!(data, [5, 6, 7]);
     /// ```
@@ -725,8 +725,151 @@ impl<'out, T: 'out> Out<'out, [T]> {
         }
     }
 
-    /// Fills the buffer with values from up to the first `self.len()` elements
-    /// of an `iterable`.
+    /// Fills `self` with elements by cloning `value`.
+    ///
+    /// The fully initialized slice is returned for your convenience.
+    ///
+    /// # Guarantees (that `unsafe` code may rely on)
+    ///
+    /// After this function returns without a panic,
+    /// all elements that `self` points to are initialized.
+    ///
+    /// # Example
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use uninit::prelude::{AsOut, Out};
+    ///
+    /// let mut data: MaybeUninit<[u8; 4]> = MaybeUninit::uninit();
+    /// let mut out: Out<[u8]> = data.as_out();
+    ///
+    /// assert_eq!(out.fill(2), &[2, 2, 2, 2]);
+    ///
+    /// // SAFETY: the array has been fully initialized
+    /// let _ = unsafe { data.assume_init() };
+    /// ```
+    #[inline]
+    pub fn fill(self, value: T) -> &'out mut [T]
+    where
+        T: Clone,
+    {
+        self.fill_with(move || value.clone())
+    }
+
+    /// Fills `self` with elements returned by calling a closure repeatedly.
+    ///
+    /// The fully initialized slice is returned for your convenience.
+    ///
+    /// This method uses a closure to create new values in order.
+    /// If you’d rather `Clone` a given value, use [`fill`].
+    /// If you want to use the `Default` trait to generate values, you can pass `Default::default` as the argument.
+    ///
+    /// # Guarantees (that `unsafe` code may rely on)
+    ///
+    /// After this function returns without a panic,
+    /// all elements that `self` points to are initialized.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use uninit::prelude::{AsOut, Out};
+    ///
+    /// let mut data: MaybeUninit<[u32; 20]> = MaybeUninit::uninit();
+    /// let mut out: Out<[u32]> = data.as_out();
+    ///
+    /// let mut a = 0;
+    /// let mut b = 1;
+    /// let fib = out.fill_with(move || {
+    ///     let o = a;
+    ///     let c = a + b;
+    ///     a = b;
+    ///     b = c;
+    ///     o
+    /// });
+    ///
+    /// assert_eq!(fib, &[
+    ///     0, 1, 1, 2, 3, 5, 8, 13, 21, 34,
+    ///     55, 89, 144, 233, 377, 610, 987,
+    ///     1597, 2584, 4181
+    /// ]);
+    ///
+    /// // SAFETY: the array has been fully initialized
+    /// let _ = unsafe { data.assume_init() };
+    /// ```
+    #[inline]
+    pub fn fill_with(mut self, mut f: impl FnMut() -> T) -> &'out mut [T] {
+        for out in self.iter_out() {
+            out.write(f());
+        }
+        unsafe {
+            // SAFETY: the entire slice has been iterated over and initialized
+            self.assume_init()
+        }
+    }
+
+    /// Fills the buffer with values from up to the first `self.len()`
+    /// elements of an `iterable`.
+    ///
+    /// The elements of the slice that have been initialized is returned.
+    /// Unlike `fill` and `fill_with`, this method does not have to
+    /// fully initalize the slice.
+    ///
+    /// # Guarantees (that `unsafe` code may rely on)
+    ///
+    /// A non-panicking return from this function guarantees that the first `k`
+    /// values of the buffer have been initialized and are thus sound to
+    /// `.assume_init()`, where `k`, the numbers of elements that `iterable`
+    /// has yielded (capped at `self.len()`), is the length of the returned
+    /// buffer.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use uninit::out_ref::Out;
+    /// use uninit::extension_traits::{AsOut, MaybeUninitTranspose};
+    ///
+    /// let mut data: MaybeUninit<[u32; 16]> = MaybeUninit::uninit();
+    /// let mut out: Out<[u32]> = data.as_out();
+    ///
+    /// assert_eq!(out.fill_with_iter(2..10), &[2, 3, 4, 5, 6, 7, 8, 9]);
+    ///
+    /// // SAFETY: the first 8 array elements have been fully initialized
+    /// // We welcome suggestions for improving the ergonomics of the below.
+    /// let initialized_part: &[u32; 8] = unsafe {
+    ///     <&[MaybeUninit<u32>; 8]>::try_from(
+    ///         data.transpose_ref().get(..8).unwrap()
+    ///     ).unwrap().transpose().assume_init_ref()
+    /// };
+    /// assert_eq!(initialized_part, &[2, 3, 4, 5, 6, 7, 8, 9]);
+    ///
+    /// let mut out: Out<[u32]> = data.as_out();
+    /// assert_eq!(out.fill_with_iter(1..), &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    /// ```
+    #[inline]
+    pub fn fill_with_iter(
+        mut self: Out<'out, [T]>,
+        iterable: impl IntoIterator<Item = T>,
+    ) -> &'out mut [T] {
+        let mut iter = iterable.into_iter();
+        let mut n = 0;
+        // Avoids significant iterator combinators due to code size concerns.
+        for out in self.iter_out() {
+            if let Some(val) = iter.next() {
+                out.write(val);
+                n += 1;
+            } else {
+                break;
+            }
+        }
+        unsafe {
+            // SAFETY: `n` values of the buffer have been initialized
+            self.get_unchecked_out(..n).assume_init()
+        }
+    }
+
+    /// Fills the buffer with values from up to the first `self.len()`
+    /// elements of an `iterable`.
     ///
     /// # Guarantees (that `unsafe` code may rely on)
     ///
@@ -736,20 +879,9 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// has yielded (capped at `self.len()`), is the length of the returned
     /// buffer.
     #[inline]
-    pub fn init_with(
-        mut self: Out<'out, [T]>,
-        iterable: impl IntoIterator<Item = T>,
-    ) -> &'out mut [T] {
-        let len = self.len();
-        let mut iter_out = self.iter_out();
-        iter_out.by_ref().zip(iterable).for_each(|(at_dst, next)| {
-            at_dst.write(next);
-        });
-        let init_count = len - iter_out.remaining().len();
-        unsafe {
-            // Safety: `init_count` values of the buffer have been initialized
-            self.get_unchecked_out(..init_count).assume_init()
-        }
+    #[deprecated = "use `fill_with_iter` instead"]
+    pub fn init_with(self: Out<'out, [T]>, iterable: impl IntoIterator<Item = T>) -> &'out mut [T] {
+        self.fill_with_iter(iterable)
     }
 
     /// `.reborrow().into_iter()`
@@ -795,7 +927,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// // Writes the values 0,1,2,...,len-1 to `data`
     /// #[no_mangle]
     /// pub unsafe extern "C" fn write_increasing(data: *mut u8, len: usize) {
-    ///     Out::slice_from_raw_parts(data, len).init_with(0..);
+    ///     Out::slice_from_raw_parts(data, len).fill_with_iter(0..);
     /// }
     /// ```
     pub unsafe fn slice_from_raw_parts(data: *mut T, len: usize) -> Out<'out, [T]> {
@@ -851,8 +983,8 @@ impl<'out, T: 'out, const N: usize> Out<'out, [T; N]> {
     /// let mut data: MaybeUninit<[i32; 3]> = MaybeUninit::uninit();
     /// let mut out = Out::from(&mut data);
     /// // `r[eborrow]()` so `out` isn't consumed.
-    /// assert_eq!(out.r().as_slice_out().init_with(1..), &[1, 2, 3]);
-    /// assert_eq!(out.as_slice_out().init_with(10..), &[10, 11, 12]);
+    /// assert_eq!(out.r().as_slice_out().fill_with_iter(1..), &[1, 2, 3]);
+    /// assert_eq!(out.as_slice_out().fill_with_iter(10..), &[10, 11, 12]);
     /// // SAFETY: fully initialized
     /// assert_eq!(unsafe { data.assume_init() }, [10, 11, 12]);
     /// ```
