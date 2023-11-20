@@ -1,6 +1,6 @@
 //! `&out _` references in stable Rust!
 //!
-//! An [`Out<'a, T>`] (`&out T`) is a _write-only reference_.
+//! An [`Out<'a, T>`][Out] (`&out T`) is a _write-only reference_.
 //!
 //! Its name is inspired by [`out` parameters][out-csharp] from various languages.
 //! It functions like `&'a mut MaybeUninit<T>`, except:
@@ -63,7 +63,7 @@
 //! there isn't already one: since this question is not that clear the
 //! author is very likely to create an issue themself).
 //!
-//! [csharp-out]: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters#out-parameter-modifier
+//! [out-csharp]: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters#out-parameter-modifier
 
 use crate::{
     extension_traits::{AsOut, Transpose},
@@ -799,7 +799,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// The fully initialized slice is returned for your convenience.
     ///
     /// This method uses a closure to create new values in order.
-    /// If you’d rather `Clone` a given value, use [`fill`].
+    /// If you’d rather `Clone` a given value, use [`Out::fill`].
     /// If you want to use the `Default` trait to generate values, you can pass `Default::default` as the argument.
     ///
     /// # Guarantees (that `unsafe` code may rely on)
