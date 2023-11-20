@@ -999,7 +999,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
 }
 
 impl<'out, T: 'out, const N: usize> Out<'out, [T; N]> {
-    /// Returns true this `&out [T; N]` is empty.
+    /// Returns true if this `&out [T; N]` is empty.
     pub fn is_empty(&self) -> bool {
         N == 0
     }
