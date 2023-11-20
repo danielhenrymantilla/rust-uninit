@@ -948,7 +948,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// - `data` must be [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned.
     /// - The memory referenced by the returned `Out` must not be accessed through any other pointer
-    ///   (not derived from the return value) for the duration of lifetime `'a`.
+    ///   (not derived from the return value) for the duration of lifetime `'out`.
     ///   Both read and write accesses are forbidden.
     /// - It must be valid to write aligned elements of `T` into `data`.
     /// - The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
