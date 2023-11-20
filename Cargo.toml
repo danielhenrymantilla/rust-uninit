@@ -18,9 +18,6 @@ categories = ["memory-management", "rust-patterns"]
 readme = "README.md"
 license = "Zlib OR MIT OR Apache-2.0"
 
-[dependencies]
-extension-traits.version = "1.0.1"
-
 [features]
 default = ["std"]
 

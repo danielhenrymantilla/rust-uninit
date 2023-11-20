@@ -253,28 +253,31 @@ mod new_uninit_slice {
     #![allow(missing_docs)]
     use super::*;
 
-    #[::extension_traits::extension(pub trait BoxNewUninitSlice)]
-    impl<T> Box<[T]> {
+    pub trait BoxNewUninitSlice<T>: Sized {
         /// Constructs a new boxed slice with uninitialized contents.
         ///
-        /// ### Examples
+        /// ## Example
         ///
-        /**  - ```rust
-    use ::uninit::prelude::*;
+        /// ```
+        /// use ::uninit::prelude::*;
+        ///
+        /// let mut values = Box::<[u32]>::new_uninit_slice(3);
+        ///
+        /// let values = unsafe {
+        ///     // Deferred initialization:
+        ///     values[0].as_mut_ptr().write(1);
+        ///     values[1].as_mut_ptr().write(2);
+        ///     values[2].as_mut_ptr().write(3);
+        ///     values.assume_init()
+        /// };
+        ///
+        ///  assert_eq!(*values, [1, 2, 3]);
+        /// ```
+        fn new_uninit_slice(len: usize)
+          -> Box<[MaybeUninit<T>]>;
+    }
 
-    let mut values = Box::<[u32]>::new_uninit_slice(3);
-
-    let values = unsafe {
-        // Deferred initialization:
-        values[0].as_mut_ptr().write(1);
-        values[1].as_mut_ptr().write(2);
-        values[2].as_mut_ptr().write(3);
-
-        values.assume_init()
-    };
-
-    assert_eq!(*values, [1, 2, 3]);
-    ``` */
+    impl<T> BoxNewUninitSlice<T> for Box<[T]> {
         #[inline]
         fn new_uninit_slice (len: usize)
           -> Box<[MaybeUninit<T>]>
