@@ -1,9 +1,10 @@
 #![cfg_attr(feature = "better-docs",
-    feature(doc_cfg, decl_macro, rustc_attrs),
+    feature(doc_cfg, decl_macro),
     cfg_attr(all(), doc = include_str!("../README.md")),
 )]
 //!
 #![cfg_attr(feature = "specialization", feature(specialization))]
+#![cfg_attr(feature = "specialization", allow(incomplete_features))]
 #![allow(unused_attributes)]
 #![deny(
     elided_lifetimes_in_paths,

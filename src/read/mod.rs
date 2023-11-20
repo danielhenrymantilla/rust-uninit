@@ -31,6 +31,7 @@ use ::std::io::Read;
 /// # Counterexample
 ///
 /// ```rust,no_run
+/// #![feature(specialization)]
 /// use ::uninit::{prelude::*,
 ///     read::{auto_impl, ReadIntoUninit},
 /// };
@@ -277,7 +278,7 @@ pub mod chain {
                         // initialization of these bytes.
                         let len = buf_.len();
                         let buf = buf.get_out(..len).unwrap();
-                        Ok(buf.assume_all_init())
+                        Ok(buf.assume_init())
                     };
                 }
             }
