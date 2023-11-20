@@ -1,6 +1,6 @@
 [package]
 name = "uninit"
-version = "0.6.1"
+version = "0.6.2"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
     "Alyssa Haroldsen <kupiakos@gmail.com>",
