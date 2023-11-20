@@ -418,6 +418,45 @@ where
         // SAFETY: sound as guaranteed by struct invariants
         unsafe { T::raw_as_uninit(self.0.as_ptr()) }
     }
+
+    #[cfg(feature = "zerocopy")]
+    /// Accesses the bytes of an `&out T` as an `&out [u8]`
+    ///
+    /// This is safe due to the `T: FromBytes` bound: any data written
+    /// to the output will not cause `T` to have invalid contents.
+    ///
+    /// # Guarantees
+    ///
+    /// The returned `Out` has the same address as the input, and its `len` is the size of the `T` value.
+    /// Therefore, if you fully initialize all of the elements of the returned `Out<[u8]>`,
+    /// it is sound to treat the `self` as initialized.
+    ///
+    /// # Example
+    /// ```
+    /// use std::mem::MaybeUninit;
+    /// use uninit::prelude::{AsOut, Out};
+    ///
+    /// let mut data: MaybeUninit<[u32; 2]> = MaybeUninit::uninit();
+    /// let u32_out: Out<[u32]> = data.as_out();
+    /// let bytes_out = u32_out.as_bytes_out();
+    /// bytes_out.fill(1);
+    ///
+    /// // SAFETY: the full memory span in `data` has been initialized
+    /// assert_eq!(unsafe { data.assume_init() }, [0x01010101, 0x01010101]);
+    /// ```
+    #[inline]
+    pub fn as_bytes_out(mut self: Out<'out, T>) -> Out<'out, [u8]>
+    where
+        T: zerocopy::FromBytes,
+    {
+        let size = mem::size_of_val(self.r().as_ref_uninit());
+        let p: *mut u8 = self.as_mut_ptr().cast();
+
+        unsafe {
+            // SAFETY:
+            Out::slice_from_raw_parts(p, size)
+        }
+    }
 }
 
 impl<'out, T: 'out> Out<'out, T> {

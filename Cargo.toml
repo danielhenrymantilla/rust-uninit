@@ -18,6 +18,9 @@ categories = ["memory-management", "rust-patterns"]
 readme = "README.md"
 license = "Zlib OR MIT OR Apache-2.0"
 
+[dependencies]
+zerocopy = { version = ">=0.1,<0.8", default-features = false, optional = true }
+
 [features]
 default = ["std"]
 
