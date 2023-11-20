@@ -9,8 +9,8 @@ mod manually_drop_mut;
 pub use self::maybe_uninit::MaybeUninitExt;
 mod maybe_uninit;
 
-pub use self::maybe_uninit_transpose::MaybeUninitTranspose;
-mod maybe_uninit_transpose;
+pub use self::transpose::Transpose;
+mod transpose;
 
 cfg_alloc! {
     pub use self::boxed::{

@@ -1,6 +1,6 @@
 use_prelude!();
 
-use crate::extension_traits::MaybeUninitTranspose;
+use crate::extension_traits::Transpose;
 use ::core::mem::ManuallyDrop;
 
 /// Extension trait to convert a `&mut _` into a `&out _` by calling

@@ -66,7 +66,7 @@
 //! [csharp-out]: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/method-parameters#out-parameter-modifier
 
 use crate::{
-    extension_traits::{AsOut, MaybeUninitTranspose},
+    extension_traits::{AsOut, Transpose},
     AsMaybeUninit,
 };
 use ::core::{
@@ -827,7 +827,7 @@ impl<'out, T: 'out> Out<'out, [T]> {
     /// ```
     /// use std::mem::MaybeUninit;
     /// use uninit::out_ref::Out;
-    /// use uninit::extension_traits::{AsOut, MaybeUninitTranspose};
+    /// use uninit::extension_traits::{AsOut, Transpose};
     ///
     /// let mut data: MaybeUninit<[u32; 16]> = MaybeUninit::uninit();
     /// let mut out: Out<[u32]> = data.as_out();

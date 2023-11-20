@@ -12,7 +12,7 @@ use_prelude!();
 ///
 /// ```
 /// use std::mem::{self, MaybeUninit};
-/// use uninit::extension_traits::MaybeUninitTranspose;
+/// use uninit::extension_traits::Transpose;
 ///
 /// let data = {
 ///     // Create an uninitialized array of `MaybeUninit`.
@@ -36,7 +36,7 @@ use_prelude!();
 ///
 /// [stdlib-mu-array-init]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
 ///
-pub trait MaybeUninitTranspose {
+pub trait Transpose {
     /// `Self` but with the array and `MaybeUninit` parts swapped.
     ///
     /// | `Self` | `Self::Transposed` |
@@ -50,7 +50,7 @@ pub trait MaybeUninitTranspose {
     ///
     /// Like with [`Result::transpose`] and [`Option::transpose`],
     /// `x.transpose().transpose()` is a no-op.
-    type Transposed: MaybeUninitTranspose<Transposed = Self>;
+    type Transposed: Transpose<Transposed = Self>;
 
     /// Transpose between an array-of-`MaybeUninit` and a `MaybeUninit` of an array.
     ///
@@ -58,7 +58,7 @@ pub trait MaybeUninitTranspose {
     ///
     /// ```
     /// use std::mem::MaybeUninit;
-    /// use uninit::extension_traits::MaybeUninitTranspose;
+    /// use uninit::extension_traits::Transpose;
     ///
     /// let mut uninit_of_array: MaybeUninit<[u32; 4]> = MaybeUninit::new([1,2,3,4]);
     ///
@@ -91,7 +91,7 @@ pub trait MaybeUninitTranspose {
     ///
     /// ```
     /// use std::mem::MaybeUninit;
-    /// use uninit::extension_traits::MaybeUninitTranspose;
+    /// use uninit::extension_traits::Transpose;
     ///
     /// let uninit_of_array: MaybeUninit<[u32; 4]> = MaybeUninit::new([4,5,6,7]);
     ///
@@ -100,7 +100,7 @@ pub trait MaybeUninitTranspose {
     /// ```
     fn transpose_ref<'a>(&'a self) -> &'a Self::Transposed
     where
-        &'a Self: MaybeUninitTranspose<Transposed = &'a Self::Transposed>,
+        &'a Self: Transpose<Transposed = &'a Self::Transposed>,
     {
         self.transpose()
     }
@@ -113,7 +113,7 @@ pub trait MaybeUninitTranspose {
     ///
     /// ```
     /// use std::mem::MaybeUninit;
-    /// use uninit::extension_traits::MaybeUninitTranspose;
+    /// use uninit::extension_traits::Transpose;
     ///
     /// let mut uninit_of_array: MaybeUninit<[u32; 4]> = MaybeUninit::uninit();
     ///
@@ -128,13 +128,13 @@ pub trait MaybeUninitTranspose {
     /// ```
     fn transpose_mut<'a>(&'a mut self) -> &'a mut Self::Transposed
     where
-        &'a mut Self: MaybeUninitTranspose<Transposed = &'a mut Self::Transposed>,
+        &'a mut Self: Transpose<Transposed = &'a mut Self::Transposed>,
     {
         self.transpose()
     }
 }
 
-impl<T, const N: usize> MaybeUninitTranspose for [MaybeUninit<T>; N] {
+impl<T, const N: usize> Transpose for [MaybeUninit<T>; N] {
     type Transposed = MaybeUninit<[T; N]>;
 
     fn transpose(self) -> Self::Transposed {
@@ -155,7 +155,7 @@ impl<T, const N: usize> MaybeUninitTranspose for [MaybeUninit<T>; N] {
     }
 }
 
-impl<T, const N: usize> MaybeUninitTranspose for MaybeUninit<[T; N]> {
+impl<T, const N: usize> Transpose for MaybeUninit<[T; N]> {
     type Transposed = [MaybeUninit<T>; N];
 
     fn transpose(self) -> Self::Transposed {
@@ -176,7 +176,7 @@ impl<T, const N: usize> MaybeUninitTranspose for MaybeUninit<[T; N]> {
     }
 }
 
-impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a [MaybeUninit<T>; N] {
+impl<'a, T: 'a, const N: usize> Transpose for &'a [MaybeUninit<T>; N] {
     type Transposed = &'a MaybeUninit<[T; N]>;
 
     fn transpose(self) -> Self::Transposed {
@@ -192,7 +192,7 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a [MaybeUninit<T>; N]
     }
 }
 
-impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a MaybeUninit<[T; N]> {
+impl<'a, T: 'a, const N: usize> Transpose for &'a MaybeUninit<[T; N]> {
     type Transposed = &'a [MaybeUninit<T>; N];
 
     fn transpose(self) -> Self::Transposed {
@@ -208,7 +208,7 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a MaybeUninit<[T; N]>
     }
 }
 
-impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut [MaybeUninit<T>; N] {
+impl<'a, T: 'a, const N: usize> Transpose for &'a mut [MaybeUninit<T>; N] {
     type Transposed = &'a mut MaybeUninit<[T; N]>;
 
     fn transpose(self) -> Self::Transposed {
@@ -224,7 +224,7 @@ impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut [MaybeUninit<T>
     }
 }
 
-impl<'a, T: 'a, const N: usize> MaybeUninitTranspose for &'a mut MaybeUninit<[T; N]> {
+impl<'a, T: 'a, const N: usize> Transpose for &'a mut MaybeUninit<[T; N]> {
     type Transposed = &'a mut [MaybeUninit<T>; N];
 
     fn transpose(self) -> Self::Transposed {
