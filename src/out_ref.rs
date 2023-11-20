@@ -420,6 +420,7 @@ where
     }
 
     #[cfg(feature = "zerocopy")]
+    #[cfg_attr(feature = "nightly", doc(cfg(feature = "zerocopy")))]
     /// Accesses the bytes of an `&out T` as an `&out [u8]`
     ///
     /// This is safe due to the `T: FromBytes` bound: any data written
